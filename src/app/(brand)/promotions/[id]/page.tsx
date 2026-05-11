@@ -1,0 +1,458 @@
+'use client';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { toast } from 'sonner';
+import {
+  getPromotionById,
+  updatePromotion,
+  updatePromotionDetail,
+  updateStoreMapping,
+  generateVouchers,
+  getVouchersByPromotion,
+  PROMOTION_TYPE_LABELS,
+  GIFT_TYPE_LABELS,
+  APPLY_LEVEL_LABELS,
+  UpdatePromotionData,
+} from '@/services/promotions';
+
+type TabKey = 'overview' | 'details' | 'stores' | 'vouchers';
+
+export default function PromotionDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const promotionId = Number(params.id);
+
+  const [promo, setPromo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabKey>('overview');
+
+  // Editing state
+  const [editing, setEditing] = useState(false);
+  const [editData, setEditData] = useState<UpdatePromotionData>({});
+  const [saving, setSaving] = useState(false);
+
+  // Voucher state
+  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [vouchersLoading, setVouchersLoading] = useState(false);
+  const [genCount, setGenCount] = useState(10);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    if (promotionId) fetchPromotion();
+  }, [promotionId]);
+
+  useEffect(() => {
+    if (activeTab === 'vouchers' && vouchers.length === 0) fetchVouchers();
+  }, [activeTab]);
+
+  const fetchPromotion = async () => {
+    setLoading(true);
+    try {
+      const res = await getPromotionById(promotionId);
+      if (res && res.data) {
+        setPromo(res.data);
+        setEditData({
+          promotionName: res.data.promotionName,
+          shortDescription: res.data.shortDescription,
+          description: res.data.description,
+          imageUrl: res.data.imageUrl,
+          applyLevel: res.data.applyLevel,
+          giftType: res.data.giftType,
+          promotionType: res.data.promotionType,
+          isForMember: res.data.isForMember,
+          fromDate: res.data.fromDate,
+          toDate: res.data.toDate,
+          applyFromTime: res.data.applyFromTime,
+          applyToTime: res.data.applyToTime,
+          isVoucher: res.data.isVoucher,
+          isApplyOnce: res.data.isApplyOnce,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchVouchers = async () => {
+    setVouchersLoading(true);
+    try {
+      const res = await getVouchersByPromotion(promotionId, 1, 100);
+      if (res && res.data) {
+        setVouchers(res.data.items || res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setVouchersLoading(false);
+    }
+  };
+
+  const handleSaveOverview = async () => {
+    setSaving(true);
+    try {
+      await updatePromotion(promotionId, editData);
+      toast.success('Promotion updated!');
+      setEditing(false);
+      fetchPromotion();
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleStoreMapping = async (mappingId: number, currentActive: boolean) => {
+    try {
+      await updateStoreMapping(mappingId, { active: !currentActive });
+      toast.success('Store mapping updated!');
+      fetchPromotion();
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    }
+  };
+
+  const handleGenerateVouchers = async () => {
+    if (genCount <= 0) return;
+    setGenerating(true);
+    try {
+      await generateVouchers(promotionId, { count: genCount });
+      toast.success(`${genCount} voucher(s) generated!`);
+      fetchVouchers();
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  /* ─── helpers ─── */
+  const fmtDate = (d: string | null) => {
+    if (!d) return 'N/A';
+    try { return new Date(d).toLocaleDateString('vi-VN'); } catch { return d; }
+  };
+
+  const tabClasses = (key: TabKey) =>
+    `px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+      activeTab === key
+        ? 'bg-brand-500 text-white shadow-sm'
+        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+    }`;
+
+  const inputCls = 'w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors';
+  const labelCls = 'block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300';
+
+  /* ─── render ─── */
+  if (loading) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!promo) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <p className="text-red-500">Promotion not found.</p>
+        <button onClick={() => router.back()} className="mt-4 text-brand-500 hover:underline">← Back</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <button onClick={() => router.push('/promotions')} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+          &larr; Back
+        </button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{promo.promotionName}</h1>
+          <p className="text-sm text-gray-400 font-mono">{promo.promotionCode}</p>
+        </div>
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+          promo.active
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+        }`}>
+          {promo.active ? 'Active' : 'Inactive'}
+        </span>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b dark:border-gray-700 pb-2">
+        <button className={tabClasses('overview')} onClick={() => setActiveTab('overview')}>Overview</button>
+        <button className={tabClasses('details')} onClick={() => setActiveTab('details')}>
+          Detail Rules ({promo.details?.length || 0})
+        </button>
+        <button className={tabClasses('stores')} onClick={() => setActiveTab('stores')}>
+          Stores ({promo.storeMappings?.length || 0})
+        </button>
+        <button className={tabClasses('vouchers')} onClick={() => setActiveTab('vouchers')}>Vouchers</button>
+      </div>
+
+      {/* ─── Tab: Overview ─── */}
+      {activeTab === 'overview' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-6">
+          {!editing ? (
+            <>
+              <div className="flex justify-end">
+                <button onClick={() => setEditing(true)} className="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">
+                  ✎ Edit
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <InfoRow label="Promotion Type" value={PROMOTION_TYPE_LABELS[promo.promotionType] || promo.promotionType} />
+                <InfoRow label="Gift Type" value={GIFT_TYPE_LABELS[promo.giftType] || promo.giftType} />
+                <InfoRow label="Apply Level" value={APPLY_LEVEL_LABELS[promo.applyLevel] || promo.applyLevel} />
+                <InfoRow label="Members Only" value={promo.isForMember ? 'Yes' : 'No'} />
+                <InfoRow label="Period" value={`${fmtDate(promo.fromDate)} → ${fmtDate(promo.toDate)}`} />
+                <InfoRow label="Apply Hours" value={
+                  promo.applyFromTime != null ? `${promo.applyFromTime}:00 – ${promo.applyToTime}:00` : 'All day'
+                } />
+                <InfoRow label="Is Voucher" value={promo.isVoucher ? 'Yes' : 'No'} />
+                <InfoRow label="Apply Once" value={promo.isApplyOnce ? 'Yes' : 'No'} />
+              </div>
+              {promo.shortDescription && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Short Description</h3>
+                  <p className="text-sm dark:text-gray-200">{promo.shortDescription}</p>
+                </div>
+              )}
+              {promo.description && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Description</h3>
+                  <p className="text-sm dark:text-gray-200 whitespace-pre-wrap">{promo.description}</p>
+                </div>
+              )}
+            </>
+          ) : (
+            /* ─── Edit form ─── */
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Promotion Name</label>
+                  <input className={inputCls} value={editData.promotionName || ''} onChange={(e) => setEditData((p) => ({ ...p, promotionName: e.target.value }))} />
+                </div>
+                <div>
+                  <label className={labelCls}>Promotion Type</label>
+                  <select className={inputCls} value={editData.promotionType ?? ''} onChange={(e) => setEditData((p) => ({ ...p, promotionType: Number(e.target.value) }))}>
+                    {Object.entries(PROMOTION_TYPE_LABELS).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Gift Type</label>
+                  <select className={inputCls} value={editData.giftType ?? ''} onChange={(e) => setEditData((p) => ({ ...p, giftType: Number(e.target.value) }))}>
+                    {Object.entries(GIFT_TYPE_LABELS).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Apply Level</label>
+                  <select className={inputCls} value={editData.applyLevel ?? ''} onChange={(e) => setEditData((p) => ({ ...p, applyLevel: Number(e.target.value) }))}>
+                    {Object.entries(APPLY_LEVEL_LABELS).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>From Date</label>
+                  <input type="date" className={inputCls} value={editData.fromDate ? editData.fromDate.split('T')[0] : ''} onChange={(e) => setEditData((p) => ({ ...p, fromDate: new Date(e.target.value).toISOString() }))} />
+                </div>
+                <div>
+                  <label className={labelCls}>To Date</label>
+                  <input type="date" className={inputCls} value={editData.toDate ? editData.toDate.split('T')[0] : ''} onChange={(e) => setEditData((p) => ({ ...p, toDate: new Date(e.target.value).toISOString() }))} />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Short Description</label>
+                <input className={inputCls} value={editData.shortDescription || ''} onChange={(e) => setEditData((p) => ({ ...p, shortDescription: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Description</label>
+                <textarea rows={3} className={inputCls} value={editData.description || ''} onChange={(e) => setEditData((p) => ({ ...p, description: e.target.value }))} />
+              </div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={editData.isForMember || false} onChange={(e) => setEditData((p) => ({ ...p, isForMember: e.target.checked }))} className="w-4 h-4 rounded text-brand-500" />
+                  <span className="text-sm dark:text-gray-300">Members Only</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={editData.isVoucher || false} onChange={(e) => setEditData((p) => ({ ...p, isVoucher: e.target.checked }))} className="w-4 h-4 rounded text-brand-500" />
+                  <span className="text-sm dark:text-gray-300">Is Voucher</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={editData.isApplyOnce || false} onChange={(e) => setEditData((p) => ({ ...p, isApplyOnce: e.target.checked }))} className="w-4 h-4 rounded text-brand-500" />
+                  <span className="text-sm dark:text-gray-300">Apply Once</span>
+                </label>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button onClick={() => setEditing(false)} className="px-4 py-2 border rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  Cancel
+                </button>
+                <button onClick={handleSaveOverview} disabled={saving} className="px-5 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium disabled:opacity-50">
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Tab: Detail Rules ─── */}
+      {activeTab === 'details' && (
+        <div className="space-y-4">
+          {promo.details && promo.details.length > 0 ? (
+            promo.details.map((d: any, i: number) => (
+              <div key={d.promotionDetailId} className="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                    Rule #{i + 1} — <span className="font-mono text-xs">{d.promotionDetailCode || 'N/A'}</span>
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <InfoRow label="Min Order" value={d.minOrderAmount != null ? `${d.minOrderAmount.toLocaleString()}₫` : '—'} />
+                  <InfoRow label="Max Order" value={d.maxOrderAmount != null ? `${d.maxOrderAmount.toLocaleString()}₫` : '—'} />
+                  <InfoRow label="Discount Rate" value={d.discountRate != null ? `${d.discountRate}%` : '—'} />
+                  <InfoRow label="Discount Amount" value={d.discountAmount != null ? `${Number(d.discountAmount).toLocaleString()}₫` : '—'} />
+                  <InfoRow label="Buy Product" value={d.buyProductCode || '—'} />
+                  <InfoRow label="Min Buy Qty" value={d.minBuyQuantity ?? '—'} />
+                  <InfoRow label="Gift Product" value={d.giftProductCode || '—'} />
+                  <InfoRow label="Gift Qty" value={d.giftQuantity ?? '—'} />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 text-center text-gray-400">
+              No detail rules configured.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Tab: Store Mappings ─── */}
+      {activeTab === 'stores' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+          {promo.storeMappings && promo.storeMappings.length > 0 ? (
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs">
+                <tr>
+                  <th className="px-5 py-3">Store ID</th>
+                  <th className="px-5 py-3">Store Name</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y dark:divide-gray-700">
+                {promo.storeMappings.map((m: any) => (
+                  <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <td className="px-5 py-3 font-mono text-gray-600 dark:text-gray-300">{m.storeId}</td>
+                    <td className="px-5 py-3 text-gray-800 dark:text-white font-medium">{m.storeName || '—'}</td>
+                    <td className="px-5 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${m.active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
+                        {m.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        onClick={() => handleToggleStoreMapping(m.id, m.active)}
+                        className={`text-xs font-medium ${m.active ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'} transition-colors`}
+                      >
+                        {m.active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="p-6 text-center text-gray-400">No stores assigned.</div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Tab: Vouchers ─── */}
+      {activeTab === 'vouchers' && (
+        <div className="space-y-4">
+          {/* Generate vouchers */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5 flex items-end gap-4">
+            <div className="flex-1">
+              <label className={labelCls}>Number of vouchers to generate</label>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                className={inputCls}
+                value={genCount}
+                onChange={(e) => setGenCount(Number(e.target.value))}
+              />
+            </div>
+            <button
+              onClick={handleGenerateVouchers}
+              disabled={generating}
+              className="px-5 py-2.5 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium disabled:opacity-50 whitespace-nowrap"
+            >
+              {generating ? 'Generating…' : 'Generate Vouchers'}
+            </button>
+          </div>
+
+          {/* Voucher list */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+            {vouchersLoading ? (
+              <div className="p-6 text-center text-gray-400">Loading vouchers…</div>
+            ) : vouchers.length > 0 ? (
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs">
+                  <tr>
+                    <th className="px-5 py-3">ID</th>
+                    <th className="px-5 py-3">Code</th>
+                    <th className="px-5 py-3">Qty</th>
+                    <th className="px-5 py-3">Used</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y dark:divide-gray-700">
+                  {vouchers.map((v: any) => (
+                    <tr key={v.voucherId} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{v.voucherId}</td>
+                      <td className="px-5 py-3 font-mono font-medium text-gray-800 dark:text-white">{v.voucherCode}</td>
+                      <td className="px-5 py-3 dark:text-gray-300">{v.quantity}</td>
+                      <td className="px-5 py-3 dark:text-gray-300">{v.usedQuantity}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${v.active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
+                          {v.active ? 'Active' : 'Used/Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">{fmtDate(v.createdDate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-6 text-center text-gray-400">No vouchers yet. Generate some above.</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Tiny reusable component ─── */
+function InfoRow({ label, value }: { label: string; value: any }) {
+  return (
+    <div>
+      <span className="text-gray-500 dark:text-gray-400 font-medium">{label}</span>
+      <p className="mt-0.5 text-gray-800 dark:text-white">{String(value)}</p>
+    </div>
+  );
+}
