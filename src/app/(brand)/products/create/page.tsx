@@ -61,6 +61,7 @@ export default function CreateProductPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | ''>('');
   const [selectedParentProductId, setSelectedParentProductId] = useState<string>('');
+  const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [productType, setProductType] = useState<number>(0);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
@@ -112,6 +113,14 @@ export default function CreateProductPage() {
     }
   };
 
+  const toggleStoreSelection = (storeId: number) => {
+    setSelectedStoreIds((prev) =>
+      prev.includes(storeId)
+        ? prev.filter((id) => id !== storeId)
+        : [...prev, storeId]
+    );
+  };
+
   const fetchStores = async () => {
     try {
       const res = await getStores(1, 1000, brandId || undefined);
@@ -150,9 +159,14 @@ export default function CreateProductPage() {
     const formData = new FormData(e.currentTarget);
     const selectedProductType = Number(formData.get('ProductType'));
     const selectedGeneralProductId = formData.get('GeneralProductId');
-    const selectedStoreId = Number(formData.get('StoreId'));
     const price = Number(formData.get('Price'));
     const selectedCatId = Number(formData.get('CatId'));
+
+    if (selectedStoreIds.length === 0) {
+      toast.error('Vui lòng chọn ít nhất một cửa hàng');
+      setLoading(false);
+      return;
+    }
 
     if (selectedProductType === ProductTypeEnum.Detail && !selectedGeneralProductId) {
       toast.error('Sản phẩm con bắt buộc phải có mã sản phẩm cha');
@@ -197,16 +211,21 @@ export default function CreateProductPage() {
         throw new Error('Không lấy được mã sản phẩm vừa tạo');
       }
 
-      await createProductDetailMapping({
-        ProductId: Number(createdProductId),
-        StoreId: selectedStoreId,
-        Price: price,
-        DiscountPrice: null,
-        DiscountPercent: null,
-        Active: true,
-      });
+      // Create product detail mappings for all selected stores
+      const mappingPromises = selectedStoreIds.map((storeId) =>
+        createProductDetailMapping({
+          ProductId: Number(createdProductId),
+          StoreId: storeId,
+          Price: price,
+          DiscountPrice: null,
+          DiscountPercent: null,
+          Active: true,
+        })
+      );
 
-      toast.success('Product and store mapping created successfully');
+      await Promise.all(mappingPromises);
+
+      toast.success(`Product and ${selectedStoreIds.length} store mapping(s) created successfully`);
 
       router.push('/products');
     } catch (err: any) {
@@ -297,29 +316,41 @@ export default function CreateProductPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2 dark:text-gray-300">
-                  Store
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-3 dark:text-gray-300">
+                  Stores (Select multiple)
                 </label>
 
-                <select
-                  required
-                  name="StoreId"
-                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="">
-                    Select store
-                  </option>
-
-                  {stores.map((item) => (
-                    <option
-                      key={`store-${item.id}-${item.name}`}
-                      value={item.id}
-                    >
-                      {item.name || 'Unnamed Store'}
-                    </option>
-                  ))}
-                </select>
+                <div className="border rounded-lg p-3 dark:bg-gray-700 dark:border-gray-600 max-h-48 overflow-y-auto">
+                  {stores.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No stores available</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {stores.map((item) => (
+                        <div key={`store-${item.id}`} className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            id={`store-${item.id}`}
+                            checked={selectedStoreIds.includes(item.id)}
+                            onChange={() => toggleStoreSelection(item.id)}
+                            className="w-4 h-4 rounded"
+                          />
+                          <label
+                            htmlFor={`store-${item.id}`}
+                            className="text-sm dark:text-gray-300 cursor-pointer flex-1"
+                          >
+                            {item.name || 'Unnamed Store'}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {selectedStoreIds.length > 0 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {selectedStoreIds.length} store(s) selected
+                  </p>
+                )}
               </div>
 
               <div>
