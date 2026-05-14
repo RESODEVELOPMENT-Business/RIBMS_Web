@@ -21,6 +21,37 @@ import {
 } from '@/types/product';
 import { Store } from '@/types/store';
 
+function resolveCatId(
+  raw: Record<string, unknown> | null,
+  categories: ProductCategory[]
+): number | undefined {
+  if (!raw) return undefined;
+
+  const direct = raw.catId ?? raw.CatId;
+  if (direct !== null && direct !== undefined && direct !== '') {
+    const numericDirect = Number(direct);
+    if (Number.isFinite(numericDirect)) return numericDirect;
+  }
+
+  const name = (raw.productCategoryName ?? raw.ProductCategoryName) as
+    | string
+    | null
+    | undefined;
+
+  if (name && categories.length > 0) {
+    const normalizedName = name.trim().toLowerCase();
+    const found = categories.find(
+      (item) =>
+        item.categoryName?.trim().toLowerCase() === normalizedName ||
+        (item.categoryNameEng && item.categoryNameEng.trim().toLowerCase() === normalizedName)
+    );
+
+    if (found) return found.id;
+  }
+
+  return undefined;
+}
+
 export default function CreateProductPage() {
   const router = useRouter();
   const brandId = useAuthStore.getState().user?.brandId;
@@ -29,14 +60,21 @@ export default function CreateProductPage() {
   const [parentProducts, setParentProducts] = useState<Product[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | ''>('');
+  const [selectedParentProductId, setSelectedParentProductId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [productType, setProductType] = useState<number>(0);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   useEffect(() => {
     fetchCategories();
     fetchParentProducts();
     fetchStores();
   }, []);
+
+  const handleSetCategories = (cats: ProductCategory[]) => {
+    setCategories(cats);
+    setCategoriesLoaded(true);
+  };
 
   const fetchCategories = async () => {
     try {
@@ -45,10 +83,11 @@ export default function CreateProductPage() {
         100
       );
 
-      setCategories(res.data.items || []);
+      handleSetCategories(res.data.items || []);
     } catch (error) {
       console.error(error);
       toast.error('Failed to load categories');
+      setCategoriesLoaded(true);
     }
   };
 
@@ -66,17 +105,11 @@ export default function CreateProductPage() {
   };
 
   const handleParentProductChange = (value: string) => {
-    const selectedParentProductId = Number(value);
-    const selectedParentProduct = parentProducts.find(
-      (item) => Number(item.id) === selectedParentProductId
-    );
+    setSelectedParentProductId(value);
 
-    if (selectedParentProduct?.catId) {
-      setSelectedCategoryId(Number(selectedParentProduct.catId));
-      return;
+    if (!value) {
+      setSelectedCategoryId('');
     }
-
-    setSelectedCategoryId('');
   };
 
   const fetchStores = async () => {
@@ -89,6 +122,23 @@ export default function CreateProductPage() {
       toast.error('Failed to load stores');
     }
   };
+
+  useEffect(() => {
+    if (!selectedParentProductId) return;
+
+    const selectedParentProduct = parentProducts.find(
+      (item) => String(item.id) === selectedParentProductId
+    );
+
+    const resolvedCatId = resolveCatId(
+      selectedParentProduct ? (selectedParentProduct as unknown as Record<string, unknown>) : null,
+      categories
+    );
+
+    if (resolvedCatId !== undefined) {
+      setSelectedCategoryId(resolvedCatId);
+    }
+  }, [selectedParentProductId, parentProducts, categories]);
 
   const handleCreate = async (
     e: React.FormEvent<HTMLFormElement>
@@ -280,7 +330,7 @@ export default function CreateProductPage() {
                 <select
                   required
                   name="CatId"
-                  value={selectedCategoryId}
+                  value={selectedCategoryId === '' ? '' : String(selectedCategoryId)}
                   onChange={(e) => setSelectedCategoryId(Number(e.target.value))}
                   className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
@@ -326,13 +376,13 @@ export default function CreateProductPage() {
                 <select
                   name="GeneralProductId"
                   required={productType === ProductTypeEnum.Detail}
-                  disabled={productType !== ProductTypeEnum.Detail}
+                  disabled={productType !== ProductTypeEnum.Detail || !categoriesLoaded}
                   onChange={(e) => handleParentProductChange(e.target.value)}
                   className="w-full p-3 border rounded-lg disabled:opacity-60 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  defaultValue=""
+                  value={selectedParentProductId}
                 >
                   <option value="">
-                    Select parent product
+                    {!categoriesLoaded ? 'Loading stores...' : 'Select parent product'}
                   </option>
                   {parentProducts.map((item) => (
                     <option key={item.id} value={item.id}>
