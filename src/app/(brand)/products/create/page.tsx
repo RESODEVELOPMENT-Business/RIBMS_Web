@@ -4,23 +4,38 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-import { createProduct, getProducts } from '@/services/products';
+import {
+  createProduct,
+  createProductDetailMapping,
+  getProducts,
+} from '@/services/products';
 import { getProductCategories } from '@/services/productCategories';
+import { getStores } from '@/services/stores';
 import { useAuthStore } from '@/store/authStore';
 
-import { Product, ProductCategory, ProductTypeEnum, PRODUCT_TYPE_OPTIONS } from '@/types/product';
+import {
+  Product,
+  ProductCategory,
+  ProductTypeEnum,
+  PRODUCT_TYPE_OPTIONS,
+} from '@/types/product';
+import { Store } from '@/types/store';
 
 export default function CreateProductPage() {
   const router = useRouter();
+  const brandId = useAuthStore.getState().user?.brandId;
 
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [parentProducts, setParentProducts] = useState<Product[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
   const [productType, setProductType] = useState<number>(0);
 
   useEffect(() => {
     fetchCategories();
     fetchParentProducts();
+    fetchStores();
   }, []);
 
   const fetchCategories = async () => {
@@ -50,6 +65,31 @@ export default function CreateProductPage() {
     }
   };
 
+  const handleParentProductChange = (value: string) => {
+    const selectedParentProductId = Number(value);
+    const selectedParentProduct = parentProducts.find(
+      (item) => Number(item.id) === selectedParentProductId
+    );
+
+    if (selectedParentProduct?.catId) {
+      setSelectedCategoryId(Number(selectedParentProduct.catId));
+      return;
+    }
+
+    setSelectedCategoryId('');
+  };
+
+  const fetchStores = async () => {
+    try {
+      const res = await getStores(1, 1000, brandId || undefined);
+      const storeItems: Store[] = res?.data?.items || res?.data || [];
+      setStores(storeItems);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load stores');
+    }
+  };
+
   const handleCreate = async (
     e: React.FormEvent<HTMLFormElement>
   ) => {
@@ -60,6 +100,9 @@ export default function CreateProductPage() {
     const formData = new FormData(e.currentTarget);
     const selectedProductType = Number(formData.get('ProductType'));
     const selectedGeneralProductId = formData.get('GeneralProductId');
+    const selectedStoreId = Number(formData.get('StoreId'));
+    const price = Number(formData.get('Price'));
+    const selectedCatId = Number(formData.get('CatId'));
 
     if (selectedProductType === ProductTypeEnum.Detail && !selectedGeneralProductId) {
       toast.error('Sản phẩm con bắt buộc phải có mã sản phẩm cha');
@@ -71,9 +114,9 @@ export default function CreateProductPage() {
       ProductName: formData.get('ProductName') as string,
       ProductNameEng: formData.get('ProductNameEng') as string,
 
-      Price: Number(formData.get('Price')),
+      Price: price,
 
-      CatId: Number(formData.get('CatId')),
+      CatId: selectedCatId,
 
       Code: formData.get('Code') as string,
 
@@ -89,9 +132,31 @@ export default function CreateProductPage() {
     };
 
     try {
-      await createProduct(payload);
+      const createProductResponse = await createProduct(payload);
+      const createdProduct =
+        createProductResponse?.data?.data ??
+        createProductResponse?.data?.Data ??
+        createProductResponse?.data;
+      const createdProductId =
+        createdProduct?.id ??
+        createdProduct?.Id ??
+        createdProduct?.productId ??
+        createdProduct?.ProductId;
 
-      toast.success('Product created successfully');
+      if (!createdProductId) {
+        throw new Error('Không lấy được mã sản phẩm vừa tạo');
+      }
+
+      await createProductDetailMapping({
+        ProductId: Number(createdProductId),
+        StoreId: selectedStoreId,
+        Price: price,
+        DiscountPrice: null,
+        DiscountPercent: null,
+        Active: true,
+      });
+
+      toast.success('Product and store mapping created successfully');
 
       router.push('/products');
     } catch (err: any) {
@@ -184,12 +249,39 @@ export default function CreateProductPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-2 dark:text-gray-300">
+                  Store
+                </label>
+
+                <select
+                  required
+                  name="StoreId"
+                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                >
+                  <option value="">
+                    Select store
+                  </option>
+
+                  {stores.map((item) => (
+                    <option
+                      key={`store-${item.id}-${item.name}`}
+                      value={item.id}
+                    >
+                      {item.name || 'Unnamed Store'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 dark:text-gray-300">
                   Category
                 </label>
 
                 <select
                   required
                   name="CatId"
+                  value={selectedCategoryId}
+                  onChange={(e) => setSelectedCategoryId(Number(e.target.value))}
                   className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
                   <option value="">
@@ -235,6 +327,7 @@ export default function CreateProductPage() {
                   name="GeneralProductId"
                   required={productType === ProductTypeEnum.Detail}
                   disabled={productType !== ProductTypeEnum.Detail}
+                  onChange={(e) => handleParentProductChange(e.target.value)}
                   className="w-full p-3 border rounded-lg disabled:opacity-60 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   defaultValue=""
                 >
