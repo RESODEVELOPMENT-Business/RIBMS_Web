@@ -14,6 +14,7 @@ import {
   APPLY_LEVEL_LABELS,
   UpdatePromotionData,
 } from '@/services/promotions';
+import { getProductCategories } from '@/services/productCategories';
 
 type TabKey = 'overview' | 'details' | 'stores' | 'vouchers';
 
@@ -25,6 +26,9 @@ export default function PromotionDetailPage() {
   const [promo, setPromo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [categories, setCategories] = useState<any[]>([]);
+  const [editingDetailId, setEditingDetailId] = useState<number | null>(null);
+  const [editingDetailData, setEditingDetailData] = useState<any>({});
 
   // Editing state
   const [editing, setEditing] = useState(false);
@@ -38,7 +42,10 @@ export default function PromotionDetailPage() {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    if (promotionId) fetchPromotion();
+    if (promotionId) {
+      fetchPromotion();
+      fetchCategories();
+    }
   }, [promotionId]);
 
   useEffect(() => {
@@ -72,6 +79,18 @@ export default function PromotionDetailPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await getProductCategories(1, 500);
+      if (res && res.data) {
+        const cats = Array.isArray(res.data) ? res.data : res.data.items || res.data.data || [];
+        setCategories(cats);
+      }
+    } catch (err) {
+      console.error('Failed to load categories', err);
     }
   };
 
@@ -310,26 +329,99 @@ export default function PromotionDetailPage() {
       {/* ─── Tab: Detail Rules ─── */}
       {activeTab === 'details' && (
         <div className="space-y-4">
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              <strong>💡 Category-Based Discount:</strong> If <strong>Category</strong> is set, the discount applies per product quantity in that category. Leave empty to apply discount once per order.
+            </p>
+          </div>
           {promo.details && promo.details.length > 0 ? (
-            promo.details.map((d: any, i: number) => (
-              <div key={d.promotionDetailId} className="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                    Rule #{i + 1} — <span className="font-mono text-xs">{d.promotionDetailCode || 'N/A'}</span>
-                  </h3>
+            promo.details.map((d: any, i: number) => {
+              const categoryName = categories.find(c => c.id == d.buyProductCode)?.name;
+              return (
+                <div key={d.promotionDetailId} className="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                      Rule #{i + 1} — <span className="font-mono text-xs">{d.promotionDetailCode || 'N/A'}</span>
+                    </h3>
+                    {editingDetailId !== d.promotionDetailId && (
+                      <button
+                        onClick={() => {
+                          setEditingDetailId(d.promotionDetailId);
+                          setEditingDetailData({ ...d });
+                        }}
+                        className="text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors"
+                      >
+                        ✎ Edit Category
+                      </button>
+                    )}
+                  </div>
+                  
+                  {editingDetailId === d.promotionDetailId ? (
+                    <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
+                          Select Category (optional)
+                        </label>
+                        <select
+                          value={editingDetailData.buyProductCode || ''}
+                          onChange={(e) =>
+                            setEditingDetailData({
+                              ...editingDetailData,
+                              buyProductCode: e.target.value || null,
+                            })
+                          }
+                          className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
+                        >
+                          <option value="">-- No Category (apply once) --</option>
+                          {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name} (ID: {cat.id})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => setEditingDetailId(null)}
+                          className="px-3 py-1.5 text-sm border rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await updatePromotionDetail(
+                                d.promotionDetailId,
+                                { buyProductCode: editingDetailData.buyProductCode }
+                              );
+                              toast.success('Category updated!');
+                              setEditingDetailId(null);
+                              fetchPromotion();
+                            } catch (err: any) {
+                              toast.error(`Error: ${err.message}`);
+                            }
+                          }}
+                          className="px-3 py-1.5 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <InfoRow label="Min Order" value={d.minOrderAmount != null ? `${d.minOrderAmount.toLocaleString()}₫` : '—'} />
+                      <InfoRow label="Max Order" value={d.maxOrderAmount != null ? `${d.maxOrderAmount.toLocaleString()}₫` : '—'} />
+                      <InfoRow label="Discount Rate" value={d.discountRate != null ? `${d.discountRate}%` : '—'} />
+                      <InfoRow label="Discount Amount" value={d.discountAmount != null ? `${Number(d.discountAmount).toLocaleString()}₫` : '—'} />
+                      <InfoRow label="Category" value={categoryName ? `${categoryName} (${d.buyProductCode})` : '—'} />
+                      <InfoRow label="Min Buy Qty" value={d.minBuyQuantity ?? '—'} />
+                      <InfoRow label="Gift Product" value={d.giftProductCode || '—'} />
+                      <InfoRow label="Gift Qty" value={d.giftQuantity ?? '—'} />
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <InfoRow label="Min Order" value={d.minOrderAmount != null ? `${d.minOrderAmount.toLocaleString()}₫` : '—'} />
-                  <InfoRow label="Max Order" value={d.maxOrderAmount != null ? `${d.maxOrderAmount.toLocaleString()}₫` : '—'} />
-                  <InfoRow label="Discount Rate" value={d.discountRate != null ? `${d.discountRate}%` : '—'} />
-                  <InfoRow label="Discount Amount" value={d.discountAmount != null ? `${Number(d.discountAmount).toLocaleString()}₫` : '—'} />
-                  <InfoRow label="Buy Product" value={d.buyProductCode || '—'} />
-                  <InfoRow label="Min Buy Qty" value={d.minBuyQuantity ?? '—'} />
-                  <InfoRow label="Gift Product" value={d.giftProductCode || '—'} />
-                  <InfoRow label="Gift Qty" value={d.giftQuantity ?? '—'} />
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 text-center text-gray-400">
               No detail rules configured.

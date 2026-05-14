@@ -11,17 +11,20 @@ import {
   APPLY_LEVEL_LABELS,
 } from '@/services/promotions';
 import { getStores } from '@/services/stores';
+import { getProductCategories } from '@/services/productCategories';
 import { useAuthStore } from '@/store/authStore';
 
 export default function CreatePromotionPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [stores, setStores] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
   const [details, setDetails] = useState<CreatePromotionDetailData[]>([{}]);
 
   useEffect(() => {
     fetchStores();
+    fetchCategories();
   }, []);
 
   const fetchStores = async () => {
@@ -33,6 +36,19 @@ export default function CreatePromotionPage() {
       }
     } catch (err) {
       console.error('Failed to load stores', err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const brandId = useAuthStore.getState().user?.brandId;
+      const res = await getProductCategories(1, 500, brandId || undefined);
+      if (res && res.data) {
+        const cats = Array.isArray(res.data) ? res.data : res.data.items || res.data.data || [];
+        setCategories(cats);
+      }
+    } catch (err) {
+      console.error('Failed to load categories', err);
     }
   };
 
@@ -268,12 +284,19 @@ export default function CreatePromotionPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelCls}>Buy Product Code</label>
-                  <input
+                  <label className={labelCls}>Category (optional)</label>
+                  <select
                     className={inputCls}
                     value={detail.buyProductCode || ''}
-                    onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value)}
-                  />
+                    onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value || undefined)}
+                  >
+                    <option value="">-- Không áp dụng theo category --</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.categoryName} (ID: {cat.id})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className={labelCls}>Min Buy Qty</label>
