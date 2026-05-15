@@ -40,17 +40,13 @@ const AppSidebar: React.FC = () => {
         return [
           {
             icon: <GridIcon />,
-            name: "Dashboard",
-            path: "/",
-          },
-          {
-            icon: <GridIcon />,
             name: "POS Management",
             subItems: [
               { name: "Stores", path: "/stores" },
               { name: "Categories", path: "/categories" },
               { name: "Products", path: "/products" },
               { name: "Promotions", path: "/promotions" },
+              { name: "Payment Types", path: "/payment-types" },
             ],
           },
         ];

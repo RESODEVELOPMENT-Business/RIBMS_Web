@@ -54,8 +54,10 @@ class FetchClient {
           finalOptions = await interceptor(finalOptions);
         }
 
+        const isFormData = finalOptions.body instanceof FormData;
+
         finalOptions.headers = {
-          "Content-Type": "application/json",
+          ...(isFormData ? {} : { "Content-Type": "application/json" }),
           ...finalOptions.headers,
         };
 

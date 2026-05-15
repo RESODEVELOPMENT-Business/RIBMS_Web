@@ -72,10 +72,11 @@ export const getProductById = async (id: string | number) => {
   return await apiClient(`/products/${id}`);
 };
 
-export const createProduct = async (request: CreateProductRequest) => {
+export const createProduct = async (request: CreateProductRequest | FormData) => {
+  const isFormData = request instanceof FormData;
   return await apiClient('/products', {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: isFormData ? request : JSON.stringify(request),
   });
 };
 
