@@ -5,19 +5,18 @@ import { toast } from 'sonner';
 import { getProductById, getProducts, updateProduct } from '@/services/products';
 import { getProductCategories } from '@/services/productCategories';
 import { Product, ProductCategory, ProductTypeEnum, PRODUCT_TYPE_OPTIONS } from '@/types/product';
-import { useAuthStore } from '@/store/authStore';
 
 function resolveCatId(
-  raw: Record<string, unknown> | null,
+  raw: Product | null | undefined,
   categories: ProductCategory[]
 ): number | undefined {
   if (!raw) return undefined;
-  const direct = raw.catId ?? raw.CatId;
-  if (direct !== null && direct !== undefined && direct !== '') {
+  const direct = raw.catId;
+  if (direct !== null && direct !== undefined) {
     const n = Number(direct);
     if (Number.isFinite(n)) return n;
   }
-  const name = (raw.productCategoryName ?? raw.ProductCategoryName) as
+  const name = (raw.productCategoryName) as
     | string
     | null
     | undefined;
@@ -36,10 +35,11 @@ export default function EditProductPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const productId = params?.id;
-  const [product, setProduct] = useState<Record<string, unknown> | null>(null);
+  const [product, setProduct] = useState<Product>();
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [parentProducts, setParentProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [productType, setProductType] = useState<number>(0);
   const [selectedCatId, setSelectedCatId] = useState<string>('');
 
@@ -61,14 +61,14 @@ export default function EditProductPage() {
     try {
       const res = await getProductById(productId);
       if (res && res.data) {
-        const p = res.data as Record<string, unknown>;
+        const p = res.data as Product;
         setProduct(p);
-        setProductType(Number(p.productType ?? p.ProductType ?? 0));
+        setProductType(Number(p.productType));
       }
     } catch (error) {
       console.error('Error fetching product:', error);
       toast.error('Failed to load product');
-      setProduct(null);
+      setProduct(undefined);
     } finally {
       setLoading(false);
     }
@@ -99,40 +99,58 @@ export default function EditProductPage() {
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSubmitting(true);
+
     const formData = new FormData(e.currentTarget);
-    const selectedProductType = Number(formData.get('ProductType'));
-    const selectedGeneralProductId = formData.get('GeneralProductId');
+    const selectedProductType = Number(formData.get('productType'));
+    const selectedGeneralProductId = formData.get('generalProductId');
 
     if (selectedProductType === ProductTypeEnum.Detail && !selectedGeneralProductId) {
       toast.error('Sản phẩm con bắt buộc phải có mã sản phẩm cha');
+      setSubmitting(false);
       return;
     }
 
-    const catFromForm = formData.get("CatId");
+    const catFromForm = formData.get("catId");
     const catIdVal =
       Number(catFromForm) ||
       (selectedCatId ? Number(selectedCatId) : NaN);
     if (!Number.isFinite(catIdVal) || catIdVal <= 0) {
       toast.error('Please select a category');
+      setSubmitting(false);
       return;
     }
 
-    const payload = {
-      ProductName: formData.get("ProductName") as string,
-      Price: Number(formData.get("Price")),
-      CatId: catIdVal,
-      Code: formData.get("Code") as string,
-      ProductType: selectedProductType,
-      GeneralProductId:
-        selectedProductType === ProductTypeEnum.Detail
-          ? Number(selectedGeneralProductId)
-          : null,
-      Active: formData.get("Active") === "on",
-    };
-    
+    // Always use FormData (API expects multipart/form-data)
+    const payload = new FormData();
+    payload.append("productName", formData.get("productName") as string);
+    payload.append("price", formData.get("price") as string);
+    payload.append("catId", String(catIdVal));
+
+    const code = formData.get("code") as string;
+    if (code) {
+      payload.append("code", code);
+    }
+
+    payload.append("productType", String(selectedProductType));
+
+    if (selectedProductType === ProductTypeEnum.Detail && selectedGeneralProductId) {
+      payload.append("generalProductId", String(selectedGeneralProductId));
+    }
+
+    payload.append("active", formData.get("active") === "on" ? "true" : "false");
+
+    const imageFile = formData.get('imageFile') as File;
+    if (imageFile && imageFile.size > 0) {
+      payload.append('imageFile', imageFile);
+    } else {
+      payload.append('imageFile', '');
+    }
+
     try {
       if (!productId) {
         toast.error('Missing product id');
+        setSubmitting(false);
         return;
       }
       await updateProduct(Number(productId), payload);
@@ -140,6 +158,8 @@ export default function EditProductPage() {
       router.push('/products');
     } catch (err: any) {
       toast.error(`Error updating product: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -211,43 +231,55 @@ export default function EditProductPage() {
         </button>
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Edit Product</h1>
       </div>
-      
+
       <div className="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
         <form onSubmit={handleUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Product Name</label>
-            <input 
-              required 
-              type="text" 
-              name="ProductName" 
-              defaultValue={(product?.productName as string) || (product?.ProductName as string) || ''}
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+            <input
+              required
+              type="text"
+              name="productName"
+              defaultValue={(product?.productName as string)}
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Product Code</label>
-            <input 
-              type="text" 
-              name="Code" 
-              defaultValue={(product?.code as string) || (product?.Code as string) || ''}
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+            <input
+              type="text"
+              name="code"
+              defaultValue={(product?.code)}
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
           <div>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Product Image (Optional)</label>
+            <input
+              type="file"
+              name="imageFile"
+              accept="image/*"
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+            {product?.picUrl && (
+              <p className="text-xs text-blue-500 mt-1">Current image exists</p>
+            )}
+          </div>
+          <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Price</label>
-            <input 
-              required 
-              type="number" 
-              step="0.01" 
-              name="Price" 
-              defaultValue={Number(product?.price ?? product?.Price ?? 0)}
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+            <input
+              required
+              type="number"
+              step="0.01"
+              name="price"
+              defaultValue={Number(product?.price)}
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Category</label>
             {(() => {
-              const savedName = product.productCategoryName ?? product.ProductCategoryName;
+              const savedName = product.productCategoryName;
               return typeof savedName === 'string' && savedName.trim() !== '' ? (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                   Current: {savedName}
@@ -256,7 +288,7 @@ export default function EditProductPage() {
             })()}
             <select
               required
-              name="CatId"
+              name="catId"
               value={selectedCatId}
               onChange={(e) => setSelectedCatId(e.target.value)}
               className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -275,7 +307,7 @@ export default function EditProductPage() {
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Product Type</label>
             <select
-              name="ProductType"
+              name="productType"
               value={productType}
               onChange={(e) => setProductType(Number(e.target.value))}
               className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -290,8 +322,8 @@ export default function EditProductPage() {
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">General Product Id (Parent Id)</label>
             <select
-              name="GeneralProductId"
-              defaultValue={(product?.generalProductId ?? product?.GeneralProductId ?? '') as number | ''}
+              name="generalProductId"
+              defaultValue={(product?.generalProductId ?? '') as number | ''}
               required={productType === ProductTypeEnum.Detail}
               disabled={productType !== ProductTypeEnum.Detail}
               className="w-full p-2 border rounded disabled:opacity-60 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -305,28 +337,29 @@ export default function EditProductPage() {
             </select>
           </div>
           <div className="md:col-span-2 flex items-center gap-2 mt-2">
-            <input 
-              type="checkbox" 
-              name="Active" 
-              id="active" 
-              defaultChecked={Boolean(product?.active ?? product?.Active)} 
-              className="w-4 h-4 text-blue-600" 
+            <input
+              type="checkbox"
+              name="active"
+              id="active"
+              defaultChecked={Boolean(product?.active)}
+              className="w-4 h-4 text-blue-600"
             />
             <label htmlFor="active" className="text-sm font-medium dark:text-gray-300">Active</label>
           </div>
           <div className="md:col-span-2 mt-4 flex justify-end gap-2">
-            <button 
-              type="button" 
-              onClick={() => router.back()} 
+            <button
+              type="button"
+              onClick={() => router.back()}
               className="px-4 py-2 border rounded text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
-              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              Update Product
+              {submitting ? 'Updating...' : 'Update Product'}
             </button>
           </div>
         </form>

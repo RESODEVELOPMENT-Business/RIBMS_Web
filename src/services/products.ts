@@ -80,10 +80,11 @@ export const createProduct = async (request: CreateProductRequest | FormData) =>
   });
 };
 
-export const updateProduct = async (id: number, request: UpdateProductRequest) => {
+export const updateProduct = async (id: number, request: UpdateProductRequest | FormData) => {
+  const isFormData = request instanceof FormData;
   return await apiClient(`/products/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(request),
+    body: isFormData ? request : JSON.stringify(request),
   });
 };
 
