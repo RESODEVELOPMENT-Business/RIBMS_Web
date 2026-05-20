@@ -35,7 +35,7 @@ export default function SignInForm() {
       toast.success("Login successful!");
 
       if (role === "Administrator") router.push("/brands");
-      else if (role === "BrandManager") router.push("/stores");
+      else if (role === "BrandManager") router.push("/sales-dashboard");
       else if (role === "StoreManager") router.push("/pos");
       else router.push("/");
 

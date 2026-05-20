@@ -42,6 +42,7 @@ const AppSidebar: React.FC = () => {
             icon: <GridIcon />,
             name: "POS Management",
             subItems: [
+              { name: "Dashboard", path: "/sales-dashboard" },
               { name: "Stores", path: "/stores" },
               { name: "Categories", path: "/categories" },
               { name: "Products", path: "/products" },

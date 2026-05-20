@@ -43,8 +43,8 @@ export default function AdminHomePage() {
         redirectPath = '/brands';
         break;
       case 'BrandManager':
-        console.log("Redirecting to /stores");
-        redirectPath = '/stores';
+        console.log("Redirecting to /sales-dashboard");
+        redirectPath = '/sales-dashboard';
         break;
       case 'StoreManager':
         console.log("Redirecting to /pos");
