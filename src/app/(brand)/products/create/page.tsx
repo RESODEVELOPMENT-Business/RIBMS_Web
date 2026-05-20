@@ -174,26 +174,29 @@ export default function CreateProductPage() {
       return;
     }
 
-    const payload = {
-      ProductName: formData.get('ProductName') as string,
-      ProductNameEng: formData.get('ProductNameEng') as string,
+    const payload = new FormData();
+    payload.append('ProductName', formData.get('ProductName') as string);
+    if (formData.get('ProductNameEng')) {
+      payload.append('ProductNameEng', formData.get('ProductNameEng') as string);
+    }
+    payload.append('Price', price.toString());
+    payload.append('CatId', selectedCatId.toString());
+    if (formData.get('Code')) {
+      payload.append('Code', formData.get('Code') as string);
+    }
+    payload.append('ProductType', selectedProductType.toString());
+    
+    if (selectedProductType === ProductTypeEnum.Detail && selectedGeneralProductId) {
+      payload.append('GeneralProductId', selectedGeneralProductId.toString());
+    }
 
-      Price: price,
+    payload.append('IsAvailable', formData.get('IsAvailable') === 'on' ? 'true' : 'false');
+    payload.append('Active', formData.get('Active') === 'on' ? 'true' : 'false');
 
-      CatId: selectedCatId,
-
-      Code: formData.get('Code') as string,
-
-      ProductType: selectedProductType,
-      GeneralProductId:
-        selectedProductType === ProductTypeEnum.Detail
-          ? Number(selectedGeneralProductId)
-          : null,
-
-      IsAvailable: formData.get('IsAvailable') === 'on',
-
-      Active: formData.get('Active') === 'on',
-    };
+    const imageFile = formData.get('imageFile') as File;
+    if (imageFile && imageFile.size > 0) {
+      payload.append('imageFile', imageFile);
+    }
 
     try {
       const createProductResponse = await createProduct(payload);
@@ -298,6 +301,19 @@ export default function CreateProductPage() {
                   name="Code"
                   placeholder="Code"
                   className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 dark:text-gray-300">
+                  Product Image
+                </label>
+
+                <input
+                  type="file"
+                  name="imageFile"
+                  accept="image/*"
+                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
 
