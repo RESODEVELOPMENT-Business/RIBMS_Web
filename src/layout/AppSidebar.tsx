@@ -8,6 +8,9 @@ import {
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
+  PieChartIcon,
+  BoxCubeIcon,
+  PlugInIcon,
 } from "../icons/index";
 import { useAuthStore } from "@/store/authStore";
 
@@ -39,14 +42,29 @@ const AppSidebar: React.FC = () => {
       case "BrandManager":
         return [
           {
-            icon: <GridIcon />,
-            name: "POS Management",
+            icon: <PieChartIcon />,
+            name: "Overview",
             subItems: [
-              { name: "Dashboard", path: "/sales-dashboard" },
-              { name: "Stores", path: "/stores" },
-              { name: "Categories", path: "/categories" },
+              { name: "Tổng quan doanh thu", path: "/sales-dashboard" },
+              { name: "Doanh thu cửa hàng", path: "/sales-dashboard/top-store-revenues" },
+              { name: "Doanh thu theo thanh toán", path: "/sales-dashboard/store-payment-methods" },
+              { name: "Orders", path: "/orders" },
+            ],
+          },
+          {
+            icon: <BoxCubeIcon />,
+            name: "Catalog & Marketing",
+            subItems: [
               { name: "Products", path: "/products" },
+              { name: "Categories", path: "/categories" },
               { name: "Promotions", path: "/promotions" },
+            ],
+          },
+          {
+            icon: <PlugInIcon />,
+            name: "System Settings",
+            subItems: [
+              { name: "Stores", path: "/stores" },
               { name: "Payment Types", path: "/payment-types" },
             ],
           },
