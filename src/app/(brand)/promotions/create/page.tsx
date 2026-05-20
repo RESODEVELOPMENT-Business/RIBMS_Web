@@ -12,6 +12,7 @@ import {
 } from '@/services/promotions';
 import { getStores } from '@/services/stores';
 import { getProductCategories } from '@/services/productCategories';
+import { getProducts } from '@/services/products';
 import { useAuthStore } from '@/store/authStore';
 
 export default function CreatePromotionPage() {
@@ -19,12 +20,15 @@ export default function CreatePromotionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [stores, setStores] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
   const [details, setDetails] = useState<CreatePromotionDetailData[]>([{}]);
+  const [giftType, setGiftType] = useState<number>(0);
 
   useEffect(() => {
     fetchStores();
     fetchCategories();
+    fetchProducts();
   }, []);
 
   const fetchStores = async () => {
@@ -52,6 +56,18 @@ export default function CreatePromotionPage() {
     }
   };
 
+  const fetchProducts = async () => {
+    try {
+      const res = await getProducts(1, 500);
+      if (res && res.data) {
+        const prods = Array.isArray(res.data) ? res.data : res.data.items || res.data.data || [];
+        setProducts(prods);
+      }
+    } catch (err) {
+      console.error('Failed to load products', err);
+    }
+  };
+
   const toggleStore = (storeId: number) => {
     setSelectedStoreIds((prev) =>
       prev.includes(storeId) ? prev.filter((id) => id !== storeId) : [...prev, storeId]
@@ -74,6 +90,7 @@ export default function CreatePromotionPage() {
     e.preventDefault();
     setSubmitting(true);
     const fd = new FormData(e.currentTarget);
+    const selectedGiftType = Number(fd.get('giftType'));
 
     const payload: CreatePromotionData = {
       promotionCode: fd.get('promotionCode') as string,
@@ -83,7 +100,7 @@ export default function CreatePromotionPage() {
       description: (fd.get('description') as string) || undefined,
       imageUrl: (fd.get('imageUrl') as string) || undefined,
       applyLevel: Number(fd.get('applyLevel')),
-      giftType: Number(fd.get('giftType')),
+      giftType: selectedGiftType,
       promotionType: Number(fd.get('promotionType')),
       isForMember: fd.get('isForMember') === 'on',
       fromDate: new Date(fd.get('fromDate') as string).toISOString(),
@@ -91,7 +108,14 @@ export default function CreatePromotionPage() {
       applyFromTime: fd.get('applyFromTime') ? Number(fd.get('applyFromTime')) : undefined,
       applyToTime: fd.get('applyToTime') ? Number(fd.get('applyToTime')) : undefined,
       storeIds: selectedStoreIds,
-      details: details.filter(
+      details: details.map((d) => {
+        const detail: CreatePromotionDetailData = { ...d };
+        // Convert giftProductCode to number if it exists
+        if (detail.giftProductCode && selectedGiftType === 1) {
+          detail.giftProductCode = String(Number(detail.giftProductCode));
+        }
+        return detail;
+      }).filter(
         (d) => d.promotionDetailCode || d.discountRate || d.discountAmount || d.giftProductCode
       ),
     };
@@ -167,7 +191,12 @@ export default function CreatePromotionPage() {
             </div>
             <div>
               <label className={labelCls}>Gift Type *</label>
-              <select required name="giftType" className={inputCls}>
+              <select 
+                required 
+                name="giftType" 
+                className={inputCls}
+                onChange={(e) => setGiftType(Number(e.target.value))}
+              >
                 {Object.entries(GIFT_TYPE_LABELS).map(([val, label]) => (
                   <option key={val} value={val}>{label}</option>
                 ))}
@@ -204,12 +233,37 @@ export default function CreatePromotionPage() {
               <input name="applyToTime" type="number" min={0} max={23} className={inputCls} placeholder="e.g. 22" />
             </div>
           </div>
+          
+          {/* Helper text for gift type */}
+          {giftType === 1 && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                📦 <strong>Mua X Tặng Y Mode:</strong> Khách hàng sẽ mua từ một category (sản phẩm), và nhận được tặng 1 sản phẩm khác.
+              </p>
+            </div>
+          )}
+          {giftType === 0 && (
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <p className="text-sm text-green-700 dark:text-green-300">
+                📉 <strong>Discount by Percentage:</strong> Áp dụng giảm giá theo tỷ lệ phần trăm.
+              </p>
+            </div>
+          )}
+          {giftType === 2 && (
+            <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+              <p className="text-sm text-purple-700 dark:text-purple-300">
+                💰 <strong>Discount by Amount:</strong> Áp dụng giảm giá theo số tiền cụ thể.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* ── Section: Promotion Details / Rules ── */}
         <div className="p-6 bg-white rounded-xl shadow dark:bg-gray-800">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Detail Rules</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+              {giftType === 1 ? '🎁 Quy tắc Mua X Tặng Y' : 'Quy tắc Giảm Giá'}
+            </h2>
             <button
               type="button"
               onClick={addDetail}
@@ -231,100 +285,197 @@ export default function CreatePromotionPage() {
                 </button>
               )}
               <p className="text-xs text-gray-400 mb-3">Rule #{idx + 1}</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className={labelCls}>Detail Code</label>
-                  <input
-                    className={inputCls}
-                    value={detail.promotionDetailCode || ''}
-                    onChange={(e) => updateDetail(idx, 'promotionDetailCode', e.target.value)}
-                    placeholder="e.g. RULE01"
-                  />
+
+              {/* Conditional UI for Gift Type = 1 (Buy X Get Y) */}
+              {giftType === 1 ? (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 p-4 rounded-lg mb-4">
+                    <p className="text-sm font-semibold text-brand-700 dark:text-brand-300 mb-3">
+                      Khách hàng mua từ category này + số lượng tối thiểu → Nhận tặng sản phẩm
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* BUY SIDE */}
+                    <div className="border-r dark:border-gray-600 pr-4 space-y-3">
+                      <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">
+                        🛍️ Điều kiện mua
+                      </h3>
+                      
+                      <div>
+                        <label className={labelCls}>Category mua *</label>
+                        <select
+                          required
+                          className={inputCls}
+                          value={detail.buyProductCode || ''}
+                          onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value || undefined)}
+                        >
+                          <option value="">-- Chọn category --</option>
+                          {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.categoryName} (ID: {cat.id})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={labelCls}>Số lượng tối thiểu *</label>
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          className={inputCls}
+                          value={detail.minBuyQuantity ?? ''}
+                          onChange={(e) => updateDetail(idx, 'minBuyQuantity', e.target.value ? Number(e.target.value) : undefined)}
+                          placeholder="e.g. 2"
+                        />
+                      </div>
+
+                      <div>
+                        <label className={labelCls}>Số lượng tối đa (tùy chọn)</label>
+                        <input
+                          type="number"
+                          className={inputCls}
+                          value={detail.maxBuyQuantity ?? ''}
+                          onChange={(e) => updateDetail(idx, 'maxBuyQuantity', e.target.value ? Number(e.target.value) : undefined)}
+                          placeholder="Để trống = không giới hạn"
+                        />
+                      </div>
+                    </div>
+
+                    {/* GIFT SIDE */}
+                    <div className="pl-4 space-y-3">
+                      <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">
+                        🎁 Sản phẩm tặng
+                      </h3>
+
+                      <div>
+                        <label className={labelCls}>Chọn sản phẩm tặng *</label>
+                        <select
+                          required
+                          className={inputCls}
+                          value={detail.giftProductCode || ''}
+                          onChange={(e) => updateDetail(idx, 'giftProductCode', e.target.value || undefined)}
+                        >
+                          <option value="">-- Chọn sản phẩm --</option>
+                          {products.map((prod) => (
+                            <option key={prod.id} value={prod.id}>
+                              {prod.productName} (ID: {prod.id})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={labelCls}>Số lượng tặng *</label>
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          className={inputCls}
+                          value={detail.giftQuantity ?? ''}
+                          onChange={(e) => updateDetail(idx, 'giftQuantity', e.target.value ? Number(e.target.value) : undefined)}
+                          placeholder="e.g. 1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>Detail Code (tùy chọn)</label>
+                    <input
+                      className={inputCls}
+                      value={detail.promotionDetailCode || ''}
+                      onChange={(e) => updateDetail(idx, 'promotionDetailCode', e.target.value)}
+                      placeholder="e.g. BUY2GET1_DETAIL1"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className={labelCls}>Min Order Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className={inputCls}
-                    value={detail.minOrderAmount ?? ''}
-                    onChange={(e) => updateDetail(idx, 'minOrderAmount', e.target.value ? Number(e.target.value) : undefined)}
-                  />
+              ) : (
+                /* Conditional UI for Gift Type = 0 or 2 (Discount) */
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg mb-4">
+                    <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                      Cấu hình điều kiện giảm giá (theo số tiền hoặc tỷ lệ phần trăm)
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>Detail Code</label>
+                      <input
+                        className={inputCls}
+                        value={detail.promotionDetailCode || ''}
+                        onChange={(e) => updateDetail(idx, 'promotionDetailCode', e.target.value)}
+                        placeholder="e.g. RULE01"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Category (tùy chọn)</label>
+                      <select
+                        className={inputCls}
+                        value={detail.buyProductCode || ''}
+                        onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value || undefined)}
+                      >
+                        <option value="">-- Không áp dụng theo category --</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.categoryName} (ID: {cat.id})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Giảm giá (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        className={inputCls}
+                        value={detail.discountRate ?? ''}
+                        onChange={(e) => updateDetail(idx, 'discountRate', e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="e.g. 10"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Giảm giá (tiền)</label>
+                      <input
+                        type="number"
+                        step="1000"
+                        min="0"
+                        className={inputCls}
+                        value={detail.discountAmount ?? ''}
+                        onChange={(e) => updateDetail(idx, 'discountAmount', e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="e.g. 50000"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Giá trị đơn hàng tối thiểu (tùy chọn)</label>
+                      <input
+                        type="number"
+                        step="1000"
+                        min="0"
+                        className={inputCls}
+                        value={detail.minOrderAmount ?? ''}
+                        onChange={(e) => updateDetail(idx, 'minOrderAmount', e.target.value ? Number(e.target.value) : undefined)}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Giá trị đơn hàng tối đa (tùy chọn)</label>
+                      <input
+                        type="number"
+                        step="1000"
+                        min="0"
+                        className={inputCls}
+                        value={detail.maxOrderAmount ?? ''}
+                        onChange={(e) => updateDetail(idx, 'maxOrderAmount', e.target.value ? Number(e.target.value) : undefined)}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className={labelCls}>Max Order Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className={inputCls}
-                    value={detail.maxOrderAmount ?? ''}
-                    onChange={(e) => updateDetail(idx, 'maxOrderAmount', e.target.value ? Number(e.target.value) : undefined)}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Discount Rate (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className={inputCls}
-                    value={detail.discountRate ?? ''}
-                    onChange={(e) => updateDetail(idx, 'discountRate', e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder="e.g. 10"
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Discount Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className={inputCls}
-                    value={detail.discountAmount ?? ''}
-                    onChange={(e) => updateDetail(idx, 'discountAmount', e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder="e.g. 50000"
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Category (optional)</label>
-                  <select
-                    className={inputCls}
-                    value={detail.buyProductCode || ''}
-                    onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value || undefined)}
-                  >
-                    <option value="">-- Không áp dụng theo category --</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.categoryName} (ID: {cat.id})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Min Buy Qty</label>
-                  <input
-                    type="number"
-                    className={inputCls}
-                    value={detail.minBuyQuantity ?? ''}
-                    onChange={(e) => updateDetail(idx, 'minBuyQuantity', e.target.value ? Number(e.target.value) : undefined)}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Gift Product Code</label>
-                  <input
-                    className={inputCls}
-                    value={detail.giftProductCode || ''}
-                    onChange={(e) => updateDetail(idx, 'giftProductCode', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Gift Qty</label>
-                  <input
-                    type="number"
-                    className={inputCls}
-                    value={detail.giftQuantity ?? ''}
-                    onChange={(e) => updateDetail(idx, 'giftQuantity', e.target.value ? Number(e.target.value) : undefined)}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           ))}
         </div>
