@@ -17,7 +17,7 @@ function isTokenExpired(decoded: any | null): boolean {
   return decoded.exp < currentTime;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const refreshToken = request.cookies.get('refreshToken')?.value;
 

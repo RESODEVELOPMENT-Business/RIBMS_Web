@@ -67,6 +67,7 @@ export default function StorePaymentMethodsTable({
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-[#00a651] text-white">
             <tr>
+              <th className="px-4 py-3 text-center font-semibold border-r border-[#009045] whitespace-nowrap">STT</th>
               <th className="px-4 py-3 text-center font-semibold border-r border-[#009045] whitespace-nowrap">
                 Cửa hàng
               </th>
@@ -83,11 +84,12 @@ export default function StorePaymentMethodsTable({
           </thead>
 
           <tbody className="bg-white divide-y divide-gray-200">
-            {displayData.map((row) => (
+            {displayData.map((row, index) => (
               <tr
                 key={row.storeId}
                 className="hover:bg-gray-50"
               >
+                <td className="px-4 py-2.5 text-center text-gray-500 border-r">{index + 1}</td>
                 <td className="px-4 py-2.5 text-gray-700 font-medium border-r whitespace-nowrap">
                   {row.storeName}
                 </td>
