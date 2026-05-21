@@ -114,7 +114,6 @@ export default function PaymentTypesPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Payment Types</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage brand-specific payment options used by the POS</p>
         </div>
         <Link href="/payment-types/create" className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium text-sm shadow-sm">
           + Create Payment Type

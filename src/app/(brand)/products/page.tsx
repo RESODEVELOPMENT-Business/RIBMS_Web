@@ -107,11 +107,10 @@ export default function ProductListPage() {
       cell: ({ row }) => {
         const isActive = row.original.active;
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            isActive
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${isActive
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-          }`}>
+            }`}>
             {isActive ? 'Active' : 'Inactive'}
           </span>
         );
@@ -148,7 +147,6 @@ export default function ProductListPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Products Management</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage products, pricing, and store assignments</p>
         </div>
         <Link
           href="/products/create"

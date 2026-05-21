@@ -167,7 +167,7 @@ export default function OrdersPage() {
     return orders.filter((order) => {
       const matchesSearch = searchTerm
         ? order.invoiceId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.orderId?.toString().includes(searchTerm)
+        order.orderId?.toString().includes(searchTerm)
         : true;
       const matchesType = typeFilter !== '' ? order.orderType === Number(typeFilter) : true;
       return matchesSearch && matchesType;
@@ -181,16 +181,13 @@ export default function OrdersPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 text-gray-800 dark:text-gray-100">
-      
+
       {/* ── Header & Title ────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400 bg-clip-text text-transparent">
             Quản Lý Đơn Hàng
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Xem lịch sử đơn hàng và thông tin chi tiết hóa đơn từ các cửa hàng
-          </p>
         </div>
       </div>
 

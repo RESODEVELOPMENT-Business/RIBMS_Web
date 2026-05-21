@@ -125,7 +125,6 @@ export default function PromotionListPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Promotions Management</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage discounts, vouchers and promotions for your brand</p>
         </div>
         <Link
           href="/promotions/create"

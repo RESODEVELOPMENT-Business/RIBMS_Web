@@ -43,29 +43,29 @@ const AppSidebar: React.FC = () => {
         return [
           {
             icon: <PieChartIcon />,
-            name: "Overview",
+            name: "Tổng Quan",
             subItems: [
               { name: "Tổng quan doanh thu", path: "/sales-dashboard" },
               { name: "Doanh thu cửa hàng", path: "/sales-dashboard/top-store-revenues" },
               { name: "Doanh thu theo thanh toán", path: "/sales-dashboard/store-payment-methods" },
-              { name: "Orders", path: "/orders" },
+              { name: "Đơn hàng", path: "/orders" },
             ],
           },
           {
             icon: <BoxCubeIcon />,
-            name: "Catalog & Marketing",
+            name: "Danh mục & Tiếp thị",
             subItems: [
-              { name: "Products", path: "/products" },
-              { name: "Categories", path: "/categories" },
-              { name: "Promotions", path: "/promotions" },
+              { name: "Sản phẩm", path: "/products" },
+              { name: "Danh mục", path: "/categories" },
+              { name: "Khuyến mãi", path: "/promotions" },
             ],
           },
           {
             icon: <PlugInIcon />,
-            name: "System Settings",
+            name: "Thiết Lập Hệ Thống",
             subItems: [
-              { name: "Stores", path: "/stores" },
-              { name: "Payment Types", path: "/payment-types" },
+              { name: "Cửa hàng", path: "/stores" },
+              { name: "Phương thức thanh toán", path: "/payment-types" },
             ],
           },
         ];
@@ -282,34 +282,76 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex  ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+        className={`py-6 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
           }`}
       >
-        <Link href="/">
+        <Link 
+          href="/" 
+          className="flex items-center gap-3 transition-transform duration-300 hover:scale-102 active:scale-98 select-none"
+          aria-label="RIBMS Home"
+        >
           {isExpanded || isHovered || isMobileOpen ? (
-            <>
-              <Image
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-              <Image
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-            </>
+            // Full Premium Logo (RIBMS)
+            <svg width="150" height="40" viewBox="0 0 150 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-auto h-10">
+              <defs>
+                <linearGradient id="logo-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#465FFF" />
+                  <stop offset="100%" stopColor="#7A5AF8" />
+                </linearGradient>
+                <linearGradient id="logo-grad-2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#36BFFA" />
+                  <stop offset="100%" stopColor="#465FFF" />
+                </linearGradient>
+                <filter id="logo-glow" x="-10%" y="-10%" width="120%" height="120%">
+                  <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#465FFF" floodOpacity="0.2" />
+                </filter>
+              </defs>
+
+              {/* R Brandmark */}
+              <g filter="url(#logo-glow)">
+                {/* Back vertical pillar */}
+                <rect x="6" y="6" width="6.5" height="28" rx="3.25" fill="url(#logo-grad-1)" />
+                {/* Flowing brand loop */}
+                <path d="M12.5 9.5C12.5 7.567 14.067 6 16 6H23C27.4183 6 31 9.58172 31 14C31 18.4183 27.4183 22 23 22H12.5V9.5Z" fill="url(#logo-grad-2)" fillOpacity="0.95" />
+                {/* Dynamic arrow extension representing metrics / growth */}
+                <path d="M18.5 20.5L26.5 31.5C27.3 32.5 28.7 32.5 29.5 31.5L30.2 30.5C31 29.5 30.8 28 29.8 27.2L22 21H18.5V20.5Z" fill="url(#logo-grad-1)" />
+                {/* Integrated smart bead linking core domains */}
+                <circle cx="20.5" cy="20.5" r="3" fill="#36BFFA" />
+              </g>
+
+              {/* Sophisticated typography with gradient styling */}
+              <text x="44" y="27" fontFamily="Outfit, sans-serif" fontSize="21" fontWeight="800" letterSpacing="1.2" className="fill-gray-900 dark:fill-white font-outfit">
+                RIBMS
+              </text>
+            </svg>
           ) : (
-            <Image
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
+            // Collapsed Premium Logo (R)
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10">
+              <defs>
+                <linearGradient id="logo-grad-1-col" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#465FFF" />
+                  <stop offset="100%" stopColor="#7A5AF8" />
+                </linearGradient>
+                <linearGradient id="logo-grad-2-col" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#36BFFA" />
+                  <stop offset="100%" stopColor="#465FFF" />
+                </linearGradient>
+                <filter id="logo-glow-col" x="-10%" y="-10%" width="120%" height="120%">
+                  <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#465FFF" floodOpacity="0.2" />
+                </filter>
+              </defs>
+
+              <g filter="url(#logo-glow-col)">
+                {/* Back vertical pillar */}
+                <rect x="8" y="6" width="6.5" height="28" rx="3.25" fill="url(#logo-grad-1-col)" />
+                {/* Flowing brand loop */}
+                <path d="M14.5 9.5C14.5 7.567 16.067 6 18 6H25C29.4183 6 33 9.58172 33 14C33 18.4183 29.4183 22 25 22H14.5V9.5Z" fill="url(#logo-grad-2-col)" fillOpacity="0.95" />
+                {/* Dynamic leg/arrow */}
+                <path d="M20.5 20.5L28.5 31.5C29.3 32.5 30.7 32.5 31.5 31.5L32.2 30.5C33 29.5 32.8 28 31.8 27.2L24 21H20.5V20.5Z" fill="url(#logo-grad-1-col)" />
+                {/* Connection point */}
+                <circle cx="22.5" cy="20.5" r="3" fill="#36BFFA" />
+              </g>
+            </svg>
           )}
         </Link>
       </div>
