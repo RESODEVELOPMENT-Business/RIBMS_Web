@@ -36,19 +36,13 @@ export default function DashboardFilters({
 
   const handleDateRangeChange = React.useCallback(
     (selectedDates: Date[], dateStr: string) => {
-      if (selectedDates.length === 1) {
-        onDateRangeChange(dateStr, dateStr);
-        return;
-      }
-
-      if (selectedDates.length >= 2) {
+      // Only apply when the picker produced a range string or two+ dates.
+      if (dateStr.includes(' to ') || selectedDates.length >= 2) {
         const parts = dateStr.split(' to ');
         const from = parts[0];
         const to = parts[1] || parts[0];
 
-        if (from) {
-          onDateRangeChange(from, to || from);
-        }
+        if (from) onDateRangeChange(from, to || from);
       }
     },
     [onDateRangeChange],
