@@ -1,117 +1,79 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/store/authStore';
-import { getStores } from '@/services/stores';
-import { getSalesDashboard, SalesDashboardData } from '@/services/salesDashboard';
+import {
+  ComparisonMode,
+  getSalesDashboard,
+  SalesDashboardData,
+  TrendGranularity,
+} from '@/services/salesDashboard';
 import {
   DollarLineIcon,
   TaskIcon,
-  CalenderIcon,
   PieChartIcon,
-  GridIcon,
-  TimeIcon,
-  CheckCircleIcon,
-  DownloadIcon
 } from '@/icons';
-import DatePicker from '@/components/form/date-picker';
+import DashboardFilters from './components/DashboardFilters';
+import ComparisonModeSelector from './components/ComparisonModeSelector';
+import TrendGranularitySelector from './components/TrendGranularitySelector';
+import TrendChart from './components/TrendChart';
+import ExportExcelButton from './components/ExportExcelButton';
+import { useDashboardFilters } from './hooks/useDashboardFilters';
+import {
+  buildScopeHeaderRows,
+  exportSheetsToExcel,
+} from './utils/excelExport';
 
+const formatVND = (value: number) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
-// Simple formatter for currency
-const formatVND = (value: number) => {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+const formatGrowth = (rate: number) => `${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`;
+
+const growthClass = (rate: number) => {
+  if (rate > 0) return 'text-emerald-600 dark:text-emerald-400';
+  if (rate < 0) return 'text-rose-600 dark:text-rose-400';
+  return 'text-gray-500';
 };
 
 export default function SalesDashboardPage() {
-  const [stores, setStores] = useState<any[]>([]);
-  const [selectedStoreId, setSelectedStoreId] = useState<number | ''>('');
-
-  // Date filters (defaults: from 7 days ago to today)
-  const [fromDate, setFromDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  });
-  const [toDate, setToDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+  const filters = useDashboardFilters(7);
+  const {
+    stores, storesLoading,
+    selectedStoreId, setSelectedStoreId,
+    fromDate, toDate, setDateRange,
+    resolveBrandId,
+  } = filters;
 
   const [dashboardData, setDashboardData] = useState<SalesDashboardData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [storesLoading, setStoresLoading] = useState<boolean>(true);
+  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>('Auto');
+  const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>('Day');
 
-  // Create a joined string for flatpickr range format to satisfy the DateOption type
-  const dateRange = `${fromDate} to ${toDate}`;
-
-  // Memoize onChange handler to prevent re-initialization
-  const handleDateRangeChange = React.useCallback((selectedDates: Date[], dateStr: string) => {
-    if (selectedDates.length === 2) {
-      const parts = dateStr.split(' to ');
-      if (parts.length === 2) {
-        setFromDate(parts[0]);
-        setToDate(parts[1]);
-      }
-    }
-  }, []);
-
-  // Load stores first
-  useEffect(() => {
-    const fetchStores = async () => {
-      setStoresLoading(true);
-      try {
-        const brandId = useAuthStore.getState().user?.brandId;
-        const res = await getStores(1, 100, brandId || undefined);
-        if (res && res.data) {
-          const items = res.data.items || res.data;
-          setStores(items);
-          if (items.length > 0) {
-            // Default to "All Stores" (empty) when opened
-            setSelectedStoreId('');
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch stores:', err);
-        toast.error('Không thể tải danh sách cửa hàng');
-      } finally {
-        setStoresLoading(false);
-      }
-    };
-    fetchStores();
-  }, []);
-
-  // Fetch dashboard data whenever store or dates change (and after stores are loaded)
   useEffect(() => {
     if (!storesLoading) {
-      fetchDashboard();
+      void fetchDashboard();
     }
-  }, [selectedStoreId, fromDate, toDate, storesLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStoreId, fromDate, toDate, storesLoading, comparisonMode, trendGranularity]);
 
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      let brandIdToUse = useAuthStore.getState().user?.brandId;
-      if (!brandIdToUse && stores.length > 0) {
-        brandIdToUse = stores[0].brandId || stores[0].BrandId;
-      }
-
+      const brandIdToUse = resolveBrandId();
       if (!selectedStoreId && !brandIdToUse) {
         setDashboardData(null);
         setLoading(false);
         return;
       }
-
       const res = await getSalesDashboard(
         selectedStoreId ? Number(selectedStoreId) : null,
         !selectedStoreId ? brandIdToUse : null,
         fromDate ? `${fromDate}T00:00:00` : undefined,
-        toDate ? `${toDate}T23:59:59` : undefined
+        toDate ? `${toDate}T23:59:59` : undefined,
+        comparisonMode,
+        trendGranularity,
       );
-      if (res && res.data) {
-        setDashboardData(res.data);
-      } else {
-        setDashboardData(null);
-      }
+      setDashboardData(res?.data ?? null);
     } catch (err: any) {
       console.error('Failed to fetch sales dashboard:', err);
       toast.error(err.message || 'Không thể tải dữ liệu báo cáo doanh thu');
@@ -121,118 +83,132 @@ export default function SalesDashboardPage() {
     }
   };
 
-  // Date Preset Handlers
-  const handlePreset = (days: number) => {
-    const today = new Date();
-    const start = new Date();
-    start.setDate(today.getDate() - days);
-
-    setFromDate(start.toISOString().split('T')[0]);
-    setToDate(today.toISOString().split('T')[0]);
-  };
-
-  // Compute payment method statistics
   const totalPaymentSum = useMemo(() => {
     if (!dashboardData?.paymentMethodRevenues) return 0;
-    return dashboardData.paymentMethodRevenues.reduce((acc, curr) => acc + curr.amount, 0);
+    return dashboardData.paymentMethodRevenues.reduce((acc, c) => acc + c.amount, 0);
   }, [dashboardData]);
+
+  const handleExport = () => {
+    if (!dashboardData) return;
+    const storeName =
+      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.name ||
+      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
+      undefined;
+
+    const summaryRows = [
+      { 'Chỉ số': 'Doanh thu trước giảm giá', 'Giá trị (VND)': dashboardData.revenue.totalAmountBeforeDiscount },
+      { 'Chỉ số': 'Giảm giá Passio100/Promotion', 'Giá trị (VND)': dashboardData.revenue.promotionDiscount },
+      { 'Chỉ số': 'Giảm giá bán hàng', 'Giá trị (VND)': dashboardData.revenue.salesDiscount },
+      { 'Chỉ số': 'Tổng giảm giá', 'Giá trị (VND)': dashboardData.revenue.totalDiscount },
+      { 'Chỉ số': 'Doanh thu thực tế', 'Giá trị (VND)': dashboardData.revenue.actualRevenue },
+      { 'Chỉ số': 'Tổng số hóa đơn', 'Giá trị': dashboardData.invoices.total },
+      { 'Chỉ số': 'Tại quán', 'Giá trị': dashboardData.invoices.atStore },
+      { 'Chỉ số': 'Mang đi', 'Giá trị': dashboardData.invoices.takeAway },
+      { 'Chỉ số': 'Giao hàng', 'Giá trị': dashboardData.invoices.delivery },
+    ] as Record<string, any>[];
+
+    const paymentRows = dashboardData.paymentMethodRevenues.map((pm) => ({
+      'Phương thức': pm.paymentTypeName,
+      'Số giao dịch': pm.transactionCount,
+      'Tổng tiền (VND)': pm.amount,
+      'Tỷ lệ (%)': totalPaymentSum > 0 ? Number(((pm.amount / totalPaymentSum) * 100).toFixed(2)) : 0,
+    }));
+
+    const sheets: any[] = [
+      {
+        name: 'Tổng quan',
+        rows: buildScopeHeaderRows({
+          reportName: 'BC#1 Tổng quan doanh thu',
+          storeName,
+          fromDate,
+          toDate,
+          extra: { 'Mode so sánh': dashboardData.comparison?.mode ?? '—' },
+        }),
+      },
+      { name: 'Chi tiết doanh thu', rows: summaryRows },
+      { name: 'Phương thức thanh toán', rows: paymentRows },
+    ];
+
+    if (dashboardData.comparison) {
+      sheets.push({
+        name: 'So sánh kỳ trước',
+        rows: [
+          { 'Chỉ số': 'Mode', 'Kỳ này': dashboardData.comparison.mode, 'Kỳ trước': '—' } as Record<string, any>,
+          { 'Chỉ số': 'Doanh thu (VND)', 'Kỳ này': dashboardData.revenue.actualRevenue, 'Kỳ trước (VND)': dashboardData.comparison.previousRevenue } as Record<string, any>,
+          { 'Chỉ số': 'Hóa đơn', 'Kỳ này': dashboardData.invoices.total, 'Kỳ trước': dashboardData.comparison.previousInvoiceCount } as Record<string, any>,
+          { 'Chỉ số': 'Tăng trưởng DT (%)', 'Kỳ này (%)': dashboardData.comparison.revenueGrowthRate, 'Kỳ trước': '—' } as Record<string, any>,
+          { 'Chỉ số': 'Tăng trưởng Bill (%)', 'Kỳ này (%)': dashboardData.comparison.invoiceGrowthRate, 'Kỳ trước': '—' } as Record<string, any>,
+        ],
+      });
+    }
+
+    if (dashboardData.trend) {
+      sheets.push({
+        name: `Trend - ${dashboardData.trend.granularity}`,
+        rows: dashboardData.trend.buckets.map((b) => ({
+          Kỳ: b.label,
+          'Số bill': b.invoiceCount,
+          'Số ly/món': b.itemCount,
+          'Doanh thu (VND)': b.revenue,
+        })),
+      });
+    }
+
+    if (dashboardData.districtRevenues && dashboardData.districtRevenues.length > 0) {
+      sheets.push({
+        name: 'Theo khu vực',
+        rows: dashboardData.districtRevenues.map((d, idx) => ({
+          STT: idx + 1,
+          'Khu vực / Quận': d.district,
+          'Số cửa hàng': d.storeCount,
+          'Số bill': d.invoiceCount,
+          'Doanh thu (VND)': d.revenue,
+          'Tỷ trọng (%)': d.sharePercent,
+        })),
+      });
+    }
+
+    exportSheetsToExcel('BC1_TongQuan', sheets);
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 text-gray-800 dark:text-gray-100">
 
-      {/* ── Header & Title ────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400 bg-clip-text text-transparent">
             Báo Cáo Doanh Thu Bán Hàng
           </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            BC#1 — Tổng quan doanh thu, hóa đơn và phương thức thanh toán
+          </p>
+        </div>
+        <ExportExcelButton onClick={handleExport} disabled={loading || !dashboardData} />
+      </div>
+
+      <DashboardFilters
+        stores={stores}
+        storesLoading={storesLoading}
+        selectedStoreId={selectedStoreId}
+        fromDate={fromDate}
+        toDate={toDate}
+        onStoreChange={setSelectedStoreId}
+        onDateRangeChange={setDateRange}
+        datePickerId="dashboard-date-range"
+      />
+
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ComparisonModeSelector value={comparisonMode} onChange={setComparisonMode} />
+          <TrendGranularitySelector value={trendGranularity} onChange={setTrendGranularity} />
         </div>
       </div>
 
-      {/* ── Filters Section ──────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-xl shadow-gray-100/50 dark:shadow-none space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-          {/* Store Selector */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Cửa Hàng
-            </label>
-            <select
-              value={selectedStoreId}
-              onChange={(e) => setSelectedStoreId(Number(e.target.value))}
-              disabled={storesLoading}
-              className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none disabled:opacity-50"
-            >
-              {storesLoading ? (
-                <option value="">Đang tải cửa hàng...</option>
-              ) : (
-                <>
-                  <option value="">Tất cả cửa hàng (Toàn hệ thống)</option>
-                  {stores.map((s) => (
-                    <option key={s.id || s.storeId} value={s.id || s.storeId}>
-                      {s.name || s.storeName}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-          </div>
-
-          {/* Date Range Picker */}
-          <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Khoảng Thời Gian
-            </label>
-            <DatePicker
-              id="dashboard-date-range"
-              mode="range"
-              defaultDate={dateRange}
-              onChange={handleDateRangeChange}
-            />
-          </div>
-
-        </div>
-
-        {/* Presets Row */}
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 dark:border-gray-800/80">
-          <button
-            type="button"
-            onClick={() => handlePreset(0)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
-          >
-            Hôm nay
-          </button>
-          <button
-            type="button"
-            onClick={() => handlePreset(3)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
-          >
-            3 ngày qua
-          </button>
-          <button
-            type="button"
-            onClick={() => handlePreset(7)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
-          >
-            7 ngày qua
-          </button>
-          <button
-            type="button"
-            onClick={() => handlePreset(30)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
-          >
-            30 ngày qua
-          </button>
-        </div>
-      </div>
-
-      {/* ── Main Dashboard Content ────────────────────────────────── */}
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-64 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl"></div>
-          <div className="h-64 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl"></div>
-          <div className="lg:col-span-2 h-80 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl"></div>
+          <div className="h-64 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl" />
+          <div className="h-64 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl" />
+          <div className="lg:col-span-2 h-80 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl" />
         </div>
       ) : !dashboardData ? (
         <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm text-center">
@@ -247,59 +223,63 @@ export default function SalesDashboardPage() {
       ) : (
         <div className="space-y-6">
 
-          {/* Top Row: Revenue Summary and Invoice Counters */}
+          {/* COMPARISON SUMMARY */}
+          {dashboardData.comparison && (
+            <>
+              <div className="text-xs text-gray-500 dark:text-gray-400 -mb-2">
+                So sánh kỳ trước (<strong>{dashboardData.comparison.mode}</strong>):{' '}
+                {new Date(dashboardData.comparison.previousFromDate).toLocaleDateString('vi-VN')} →{' '}
+                {new Date(dashboardData.comparison.previousToDate).toLocaleDateString('vi-VN')}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ComparisonCard
+                  label="Doanh thu"
+                  value={formatVND(dashboardData.revenue.actualRevenue)}
+                  rate={dashboardData.comparison.revenueGrowthRate}
+                  previousValue={formatVND(dashboardData.comparison.previousRevenue)}
+                />
+                <ComparisonCard
+                  label="Hóa đơn"
+                  value={dashboardData.invoices.total.toLocaleString('vi-VN')}
+                  rate={dashboardData.comparison.invoiceGrowthRate}
+                  previousValue={dashboardData.comparison.previousInvoiceCount.toLocaleString('vi-VN')}
+                />
+              </div>
+            </>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            {/* 1. SECTION: Tổng Doanh Thu Bán Hàng */}
+            {/* Section: Revenue */}
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl shadow-gray-100/30 dark:shadow-none p-6 flex flex-col justify-between overflow-hidden relative group">
-              {/* Decorative radial gradients for high-end look */}
-              <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                       <DollarLineIcon className="w-5 h-5" />
                     </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-800 dark:text-white">Tổng doanh thu bán hàng</h2>
-                    </div>
+                    <h2 className="text-lg font-bold text-gray-800 dark:text-white">Tổng doanh thu bán hàng</h2>
                   </div>
                 </div>
 
-                {/* Main Hero: Actual Revenue */}
                 <div className="space-y-1 mb-6 border-b border-gray-100 dark:border-gray-800/80 pb-6">
                   <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                     Doanh thu Thực Tế (3)
                   </span>
-                  <div className="text-4xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400 drop-shadow-sm transition-all duration-300">
+                  <div className="text-4xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400 drop-shadow-sm">
                     {formatVND(dashboardData.revenue.actualRevenue)}
                   </div>
                 </div>
 
-                {/* Sub breakdown list */}
                 <div className="space-y-3.5">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Doanh thu trước giảm giá (1)</span>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">
-                      {formatVND(dashboardData.revenue.totalAmountBeforeDiscount)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Giảm giá (2.1)</span>
-                    <span className="font-semibold text-red-500 dark:text-red-400">
-                      -{formatVND(dashboardData.revenue.promotionDiscount)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Giảm giá bán hàng (2.2)</span>
-                    <span className="font-semibold text-red-500 dark:text-red-400">
-                      -{formatVND(dashboardData.revenue.salesDiscount)}
-                    </span>
-                  </div>
-
+                  <Row label="Doanh thu trước giảm giá (1)"
+                       value={formatVND(dashboardData.revenue.totalAmountBeforeDiscount)} />
+                  <Row label="Giảm giá (2.1)"
+                       value={`-${formatVND(dashboardData.revenue.promotionDiscount)}`}
+                       danger />
+                  <Row label="Giảm giá bán hàng (2.2)"
+                       value={`-${formatVND(dashboardData.revenue.salesDiscount)}`}
+                       danger />
                   <div className="flex justify-between items-center text-sm pt-3.5 border-t border-gray-100 dark:border-gray-800/80 font-medium">
                     <span className="text-gray-700 dark:text-gray-300">Tổng giảm giá bán hàng (2)=(2.1)+(2.2)</span>
                     <span className="font-bold text-red-600 dark:text-red-400">
@@ -310,91 +290,47 @@ export default function SalesDashboardPage() {
               </div>
             </div>
 
-            {/* 2. SECTION: Tổng Số Hóa Đơn Bán Hàng */}
+            {/* Section: Invoices */}
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl shadow-gray-100/30 dark:shadow-none p-6 flex flex-col justify-between overflow-hidden relative group">
-              <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                       <TaskIcon className="w-5 h-5" />
                     </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-800 dark:text-white">Tổng số hóa đơn bán hàng</h2>
-                    </div>
+                    <h2 className="text-lg font-bold text-gray-800 dark:text-white">Tổng số hóa đơn bán hàng</h2>
                   </div>
                 </div>
 
-                {/* Main Hero: Total Invoices */}
                 <div className="space-y-1 mb-6 border-b border-gray-100 dark:border-gray-800/80 pb-6">
                   <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                     Tổng số hóa đơn
                   </span>
                   <div className="text-4xl font-extrabold tracking-tight text-indigo-600 dark:text-indigo-400 drop-shadow-sm">
-                    {dashboardData.invoices.total}
+                    {dashboardData.invoices.total.toLocaleString('vi-VN')}
                   </div>
                 </div>
 
-                {/* Invoice Type Breakdowns with animated mini visual bars */}
-                <div className="space-y-4">
-                  {/* Tại quán */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500 dark:text-gray-400 font-medium">Tại quán (1)</span>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        {dashboardData.invoices.atStore} hóa đơn
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-indigo-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${dashboardData.invoices.total > 0 ? (dashboardData.invoices.atStore / dashboardData.invoices.total) * 100 : 0}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Mang đi */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500 dark:text-gray-400 font-medium">Mang đi (2)</span>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        {dashboardData.invoices.takeAway} hóa đơn
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-purple-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${dashboardData.invoices.total > 0 ? (dashboardData.invoices.takeAway / dashboardData.invoices.total) * 100 : 0}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Giao hàng */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500 dark:text-gray-400 font-medium">Giao hàng (3)</span>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        {dashboardData.invoices.delivery} hóa đơn
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-sky-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${dashboardData.invoices.total > 0 ? (dashboardData.invoices.delivery / dashboardData.invoices.total) * 100 : 0}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-
+                <InvoiceBar label="Tại quán (1)"
+                            count={dashboardData.invoices.atStore}
+                            total={dashboardData.invoices.total}
+                            color="bg-indigo-500" />
+                <InvoiceBar label="Mang đi (2)"
+                            count={dashboardData.invoices.takeAway}
+                            total={dashboardData.invoices.total}
+                            color="bg-purple-500" />
+                <InvoiceBar label="Giao hàng (3)"
+                            count={dashboardData.invoices.delivery}
+                            total={dashboardData.invoices.total}
+                            color="bg-sky-500" />
               </div>
             </div>
-
           </div>
 
-          {/* 3. SECTION: Bảng tổng doanh thu theo các phương thức thanh toán */}
+          {/* Payment methods */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl shadow-gray-100/30 dark:shadow-none p-6 relative overflow-hidden">
-            <div className="absolute -top-12 -right-12 w-48 h-48 bg-brand-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -top-12 -right-12 w-48 h-48 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
 
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
               <div className="flex items-center gap-3">
@@ -402,11 +338,14 @@ export default function SalesDashboardPage() {
                   <PieChartIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-800 dark:text-white">Tổng doanh thu theo phương thức thanh toán</h2>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">Phân phối nguồn tiền thực tế đổ về hệ thống</p>
+                  <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+                    Tổng doanh thu theo phương thức thanh toán
+                  </h2>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    Phân phối nguồn tiền thực tế đổ về hệ thống
+                  </p>
                 </div>
               </div>
-
               <div className="text-right">
                 <p className="text-xs text-gray-400 dark:text-gray-500">Cộng gộp tổng thanh toán</p>
                 <p className="text-lg font-bold text-brand-600 dark:text-brand-400">
@@ -415,20 +354,17 @@ export default function SalesDashboardPage() {
               </div>
             </div>
 
-            {/* List and visual breakdown of payment methods */}
             {dashboardData.paymentMethodRevenues.length === 0 ? (
               <div className="text-center py-10 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Không ghi nhận giao dịch thanh toán nào trong kỳ.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Không ghi nhận giao dịch thanh toán nào trong kỳ.
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
-
-                {/* Horizontal progress/share bars with beautiful style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                   {dashboardData.paymentMethodRevenues.map((pm, idx) => {
                     const percent = totalPaymentSum > 0 ? (pm.amount / totalPaymentSum) * 100 : 0;
-
-                    // Curated beautiful dynamic gradient based on index
                     const gradients = [
                       'from-emerald-500 to-teal-500',
                       'from-indigo-500 to-blue-500',
@@ -436,13 +372,10 @@ export default function SalesDashboardPage() {
                       'from-rose-500 to-pink-500',
                       'from-purple-500 to-violet-500',
                     ];
-                    const selectedGradient = gradients[idx % gradients.length];
-
+                    const gradient = gradients[idx % gradients.length];
                     return (
-                      <div
-                        key={pm.paymentType}
-                        className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60 flex flex-col justify-between hover:shadow-md transition-all duration-300"
-                      >
+                      <div key={pm.paymentType}
+                           className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60 flex flex-col justify-between hover:shadow-md transition-all duration-300">
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <span className="text-sm font-bold text-gray-800 dark:text-white block">
@@ -461,59 +394,64 @@ export default function SalesDashboardPage() {
                             </span>
                           </div>
                         </div>
-
-                        {/* Beautiful gradient bar */}
                         <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
-                          <div
-                            className={`bg-gradient-to-r ${selectedGradient} h-full rounded-full transition-all duration-500`}
-                            style={{ width: `${percent}%` }}
-                          ></div>
+                          <div className={`bg-gradient-to-r ${gradient} h-full rounded-full transition-all duration-500`}
+                               style={{ width: `${percent}%` }} />
                         </div>
                       </div>
                     );
                   })}
                 </div>
-
-                {/* Table representation for perfect precision list view */}
-                <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800/80 mt-6">
-                  <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
-                    <thead className="bg-gray-50 dark:bg-gray-800/50">
-                      <tr>
-                        <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-gray-400">Phương thức</th>
-                        <th className="px-6 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-gray-400">Số giao dịch</th>
-                        <th className="px-6 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-gray-400">Tổng tiền</th>
-                        <th className="px-6 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-gray-400">Tỷ lệ đóng góp</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {dashboardData.paymentMethodRevenues.map((pm) => {
-                        const percent = totalPaymentSum > 0 ? (pm.amount / totalPaymentSum) * 100 : 0;
-                        return (
-                          <tr key={pm.paymentType} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
-                              {pm.paymentTypeName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                              {pm.transactionCount}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right text-gray-800 dark:text-gray-100">
-                              {formatVND(pm.amount)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-emerald-600 dark:text-emerald-400 font-bold">
-                              {percent.toFixed(1)}%
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
               </div>
             )}
           </div>
 
+          {/* Trend chart */}
+          {dashboardData.trend && dashboardData.trend.buckets.length > 0 && (
+            <TrendChart
+              buckets={dashboardData.trend.buckets}
+              granularity={dashboardData.trend.granularity}
+            />
+          )}
 
+          {/* District revenues — only when viewing brand-wide */}
+          {dashboardData.districtRevenues && dashboardData.districtRevenues.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
+              <h2 className="text-lg font-bold mb-4">Doanh thu theo khu vực / quận</h2>
+              <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
+                <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-800/50">
+                    <tr>
+                      <th className="px-4 py-2.5 text-center font-bold text-gray-500 uppercase w-12">#</th>
+                      <th className="px-4 py-2.5 text-left font-bold text-gray-500 uppercase">Quận / Khu vực</th>
+                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Số CH</th>
+                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Số bill</th>
+                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Doanh thu</th>
+                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Tỷ trọng</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {dashboardData.districtRevenues.map((d, idx) => (
+                      <tr key={d.district} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
+                        <td className="px-4 py-2.5 text-center text-gray-500">{idx + 1}</td>
+                        <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">{d.district}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">{d.storeCount}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">
+                          {d.invoiceCount.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                          {formatVND(d.revenue)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-brand-600 dark:text-brand-400 font-semibold">
+                          {d.sharePercent.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
         </div>
       )}
@@ -521,3 +459,57 @@ export default function SalesDashboardPage() {
   );
 }
 
+// ── helpers ─────────────────────────────────────────────────────────
+
+function Row({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+  return (
+    <div className="flex justify-between items-center text-sm">
+      <span className="text-gray-500 dark:text-gray-400">{label}</span>
+      <span className={`font-semibold ${danger ? 'text-red-500 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function InvoiceBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
+  const pct = total > 0 ? (count / total) * 100 : 0;
+  return (
+    <div className="space-y-1 mb-3">
+      <div className="flex justify-between items-center text-sm">
+        <span className="text-gray-500 dark:text-gray-400 font-medium">{label}</span>
+        <span className="font-semibold text-gray-800 dark:text-gray-200">{count} hóa đơn</span>
+      </div>
+      <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+        <div className={`${color} h-full rounded-full transition-all duration-500`}
+             style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function ComparisonCard({
+  label, value, rate, previousValue,
+}: {
+  label: string;
+  value: string;
+  rate: number;
+  previousValue: string;
+}) {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+          {label}
+        </span>
+        <span className={`text-xs font-bold ${growthClass(rate)}`}>
+          {formatGrowth(rate)}
+        </span>
+      </div>
+      <div className="text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
+      <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+        Kỳ trước: {previousValue}
+      </div>
+    </div>
+  );
+}

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { DataTable } from '@/components/ui/data-table';
 import { SkeletonTable } from '@/components/ui/skeleton-table';
 import { ColumnDef } from '@tanstack/react-table';
-import { PencilIcon, TrashBinIcon } from '@/icons';
+import { PencilIcon } from '@/icons';
 import { formatCurrency } from '@/utils/currency';
 import { Product, PRODUCT_TYPE_OPTIONS } from '@/types/product';
 
@@ -33,17 +33,6 @@ export default function ProductListPage() {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
-    try {
-      await deleteProduct(id);
-      fetchData();
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      alert('Failed to delete product');
     }
   };
 
@@ -130,12 +119,6 @@ export default function ProductListPage() {
               <PencilIcon className="w-4 h-4" />
               Details
             </Link>
-            <button
-              onClick={() => id != null && handleDelete(id)}
-              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-            >
-              <TrashBinIcon className="w-4 h-4" />
-            </button>
           </div>
         );
       }

@@ -92,11 +92,21 @@ export default function OrdersPage() {
   const dateRange = `${fromDate} to ${toDate}`;
 
   const handleDateRangeChange = React.useCallback((selectedDates: Date[], dateStr: string) => {
-    if (selectedDates.length === 2) {
+    if (selectedDates.length === 1) {
+      setFromDate(dateStr);
+      setToDate(dateStr);
+      setPage(1);
+      return;
+    }
+
+    if (selectedDates.length >= 2) {
       const parts = dateStr.split(' to ');
-      if (parts.length === 2) {
-        setFromDate(parts[0]);
-        setToDate(parts[1]);
+      const from = parts[0];
+      const to = parts[1] || parts[0];
+
+      if (from) {
+        setFromDate(from);
+        setToDate(to || from);
         setPage(1);
       }
     }
