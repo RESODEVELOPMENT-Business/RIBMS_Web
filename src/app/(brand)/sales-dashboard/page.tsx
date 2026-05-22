@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  ComparisonMode,
   getSalesDashboard,
   SalesDashboardData,
   TrendGranularity,
@@ -14,7 +13,6 @@ import {
   PieChartIcon,
 } from '@/icons';
 import DashboardFilters from './components/DashboardFilters';
-import ComparisonModeSelector from './components/ComparisonModeSelector';
 import TrendGranularitySelector from './components/TrendGranularitySelector';
 import TrendChart from './components/TrendChart';
 import ExportExcelButton from './components/ExportExcelButton';
@@ -27,14 +25,6 @@ import {
 const formatVND = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
-const formatGrowth = (rate: number) => `${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`;
-
-const growthClass = (rate: number) => {
-  if (rate > 0) return 'text-emerald-600 dark:text-emerald-400';
-  if (rate < 0) return 'text-rose-600 dark:text-rose-400';
-  return 'text-gray-500';
-};
-
 export default function SalesDashboardPage() {
   const filters = useDashboardFilters(7);
   const {
@@ -46,7 +36,6 @@ export default function SalesDashboardPage() {
 
   const [dashboardData, setDashboardData] = useState<SalesDashboardData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>('Auto');
   const [trendGranularity, setTrendGranularity] = useState<TrendGranularity>('Day');
 
   useEffect(() => {
@@ -54,7 +43,7 @@ export default function SalesDashboardPage() {
       void fetchDashboard();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, fromDate, toDate, storesLoading, comparisonMode, trendGranularity]);
+  }, [selectedStoreId, fromDate, toDate, storesLoading, trendGranularity]);
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -70,7 +59,7 @@ export default function SalesDashboardPage() {
         !selectedStoreId ? brandIdToUse : null,
         fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate ? `${toDate}T23:59:59` : undefined,
-        comparisonMode,
+        undefined,
         trendGranularity,
       );
       setDashboardData(res?.data ?? null);
@@ -122,25 +111,11 @@ export default function SalesDashboardPage() {
           storeName,
           fromDate,
           toDate,
-          extra: { 'Mode so sánh': dashboardData.comparison?.mode ?? '—' },
         }),
       },
       { name: 'Chi tiết doanh thu', rows: summaryRows },
       { name: 'Phương thức thanh toán', rows: paymentRows },
     ];
-
-    if (dashboardData.comparison) {
-      sheets.push({
-        name: 'So sánh kỳ trước',
-        rows: [
-          { 'Chỉ số': 'Mode', 'Kỳ này': dashboardData.comparison.mode, 'Kỳ trước': '—' } as Record<string, any>,
-          { 'Chỉ số': 'Doanh thu (VND)', 'Kỳ này': dashboardData.revenue.actualRevenue, 'Kỳ trước (VND)': dashboardData.comparison.previousRevenue } as Record<string, any>,
-          { 'Chỉ số': 'Hóa đơn', 'Kỳ này': dashboardData.invoices.total, 'Kỳ trước': dashboardData.comparison.previousInvoiceCount } as Record<string, any>,
-          { 'Chỉ số': 'Tăng trưởng DT (%)', 'Kỳ này (%)': dashboardData.comparison.revenueGrowthRate, 'Kỳ trước': '—' } as Record<string, any>,
-          { 'Chỉ số': 'Tăng trưởng Bill (%)', 'Kỳ này (%)': dashboardData.comparison.invoiceGrowthRate, 'Kỳ trước': '—' } as Record<string, any>,
-        ],
-      });
-    }
 
     if (dashboardData.trend) {
       sheets.push({
@@ -199,7 +174,6 @@ export default function SalesDashboardPage() {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <ComparisonModeSelector value={comparisonMode} onChange={setComparisonMode} />
           <TrendGranularitySelector value={trendGranularity} onChange={setTrendGranularity} />
         </div>
       </div>
@@ -223,31 +197,6 @@ export default function SalesDashboardPage() {
       ) : (
         <div className="space-y-6">
 
-          {/* COMPARISON SUMMARY */}
-          {dashboardData.comparison && (
-            <>
-              <div className="text-xs text-gray-500 dark:text-gray-400 -mb-2">
-                So sánh kỳ trước (<strong>{dashboardData.comparison.mode}</strong>):{' '}
-                {new Date(dashboardData.comparison.previousFromDate).toLocaleDateString('vi-VN')} →{' '}
-                {new Date(dashboardData.comparison.previousToDate).toLocaleDateString('vi-VN')}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ComparisonCard
-                  label="Doanh thu"
-                  value={formatVND(dashboardData.revenue.actualRevenue)}
-                  rate={dashboardData.comparison.revenueGrowthRate}
-                  previousValue={formatVND(dashboardData.comparison.previousRevenue)}
-                />
-                <ComparisonCard
-                  label="Hóa đơn"
-                  value={dashboardData.invoices.total.toLocaleString('vi-VN')}
-                  rate={dashboardData.comparison.invoiceGrowthRate}
-                  previousValue={dashboardData.comparison.previousInvoiceCount.toLocaleString('vi-VN')}
-                />
-              </div>
-            </>
-          )}
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Section: Revenue */}
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl shadow-gray-100/30 dark:shadow-none p-6 flex flex-col justify-between overflow-hidden relative group">
@@ -262,28 +211,23 @@ export default function SalesDashboardPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1 mb-6 border-b border-gray-100 dark:border-gray-800/80 pb-6">
-                  <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    Doanh thu Thực Tế (3)
-                  </span>
-                  <div className="text-4xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400 drop-shadow-sm">
-                    {formatVND(dashboardData.revenue.actualRevenue)}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800/80">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Doanh thu trước giảm giá</span>
+                    <span className="text-lg font-bold text-gray-800 dark:text-gray-200">
+                      {formatVND(dashboardData.revenue.totalAmountBeforeDiscount)}
+                    </span>
                   </div>
-                </div>
-
-                <div className="space-y-3.5">
-                  <Row label="Doanh thu trước giảm giá (1)"
-                       value={formatVND(dashboardData.revenue.totalAmountBeforeDiscount)} />
-                  <Row label="Giảm giá (2.1)"
-                       value={`-${formatVND(dashboardData.revenue.promotionDiscount)}`}
-                       danger />
-                  <Row label="Giảm giá bán hàng (2.2)"
-                       value={`-${formatVND(dashboardData.revenue.salesDiscount)}`}
-                       danger />
-                  <div className="flex justify-between items-center text-sm pt-3.5 border-t border-gray-100 dark:border-gray-800/80 font-medium">
-                    <span className="text-gray-700 dark:text-gray-300">Tổng giảm giá bán hàng (2)=(2.1)+(2.2)</span>
-                    <span className="font-bold text-red-600 dark:text-red-400">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800/80">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Tổng giảm giá</span>
+                    <span className="text-lg font-bold text-red-500 dark:text-red-400">
                       -{formatVND(dashboardData.revenue.totalDiscount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-3">
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Doanh thu thực tế</span>
+                    <span className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                      {formatVND(dashboardData.revenue.actualRevenue)}
                     </span>
                   </div>
                 </div>
@@ -488,28 +432,4 @@ function InvoiceBar({ label, count, total, color }: { label: string; count: numb
   );
 }
 
-function ComparisonCard({
-  label, value, rate, previousValue,
-}: {
-  label: string;
-  value: string;
-  rate: number;
-  previousValue: string;
-}) {
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          {label}
-        </span>
-        <span className={`text-xs font-bold ${growthClass(rate)}`}>
-          {formatGrowth(rate)}
-        </span>
-      </div>
-      <div className="text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
-      <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-        Kỳ trước: {previousValue}
-      </div>
-    </div>
-  );
-}
+
