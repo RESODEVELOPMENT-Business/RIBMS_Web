@@ -23,7 +23,7 @@ const formatNumber = (v: number) => new Intl.NumberFormat('vi-VN').format(v);
 const formatGrowth = (rate: number) => `${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`;
 
 export default function ComparisonPage() {
-  const filters = useDashboardFilters(7);
+  const filters = useDashboardFilters();
   const {
     stores, storesLoading,
     selectedStoreId, setSelectedStoreId,

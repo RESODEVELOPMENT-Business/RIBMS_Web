@@ -14,7 +14,7 @@ import { getStores } from '@/services/stores';
  * Re-used across BC#1..BC#3 pages so that filters stay consistent and we don't
  * duplicate boilerplate.
  */
-export function useDashboardFilters(initialDays = 7) {
+export function useDashboardFilters(initialDays = 0) {
   const [stores, setStores] = useState<any[]>([]);
   const [storesLoading, setStoresLoading] = useState<boolean>(true);
   const [selectedStoreId, setSelectedStoreId] = useState<number | ''>('');

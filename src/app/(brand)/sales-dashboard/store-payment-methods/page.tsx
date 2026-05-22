@@ -13,7 +13,7 @@ import {
 import StorePaymentMethodsTable from '../components/StorePaymentMethodsTable';
 
 export default function StorePaymentMethodsPage() {
-  const filters = useDashboardFilters(7);
+  const filters = useDashboardFilters();
   const {
     stores, storesLoading,
     selectedStoreId, setSelectedStoreId,

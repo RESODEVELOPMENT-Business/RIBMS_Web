@@ -25,7 +25,7 @@ const formatVND = (v: number) =>
 const formatNumber = (v: number) => new Intl.NumberFormat('vi-VN').format(v);
 
 export default function ProfitReportPage() {
-  const filters = useDashboardFilters(7);
+  const filters = useDashboardFilters();
   const {
     stores, storesLoading,
     selectedStoreId, setSelectedStoreId,

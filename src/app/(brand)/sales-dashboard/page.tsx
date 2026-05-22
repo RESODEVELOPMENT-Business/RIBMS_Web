@@ -26,7 +26,7 @@ const formatVND = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
 
 export default function SalesDashboardPage() {
-  const filters = useDashboardFilters(7);
+  const filters = useDashboardFilters();
   const {
     stores, storesLoading,
     selectedStoreId, setSelectedStoreId,
