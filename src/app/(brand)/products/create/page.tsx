@@ -160,6 +160,7 @@ export default function CreateProductPage() {
     const selectedProductType = Number(formData.get('ProductType'));
     const selectedGeneralProductId = formData.get('GeneralProductId');
     const price = Number(formData.get('Price'));
+    const priceCogs = formData.get('PriceCogs') ? Number(formData.get('PriceCogs')) : null;
     const selectedCatId = Number(formData.get('CatId'));
 
     if (selectedStoreIds.length === 0) {
@@ -180,6 +181,9 @@ export default function CreateProductPage() {
       payload.append('ProductNameEng', formData.get('ProductNameEng') as string);
     }
     payload.append('Price', price.toString());
+    if (priceCogs !== null && !isNaN(priceCogs)) {
+      payload.append('PriceCogs', priceCogs.toString());
+    }
     payload.append('CatId', selectedCatId.toString());
     if (formData.get('Code')) {
       payload.append('Code', formData.get('Code') as string);
@@ -327,6 +331,20 @@ export default function CreateProductPage() {
                   type="number"
                   step="0.01"
                   name="Price"
+                  placeholder="0"
+                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 dark:text-gray-300">
+                  Price COGS (Giá vốn)
+                </label>
+
+                <input
+                  type="number"
+                  step="0.01"
+                  name="PriceCogs"
                   placeholder="0"
                   className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />

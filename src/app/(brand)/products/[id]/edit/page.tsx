@@ -125,6 +125,12 @@ export default function EditProductPage() {
     const payload = new FormData();
     payload.append("productName", formData.get("productName") as string);
     payload.append("price", formData.get("price") as string);
+    
+    const priceCogs = formData.get("priceCogs") as string;
+    if (priceCogs) {
+      payload.append("priceCogs", priceCogs);
+    }
+
     payload.append("catId", String(catIdVal));
 
     const code = formData.get("code") as string;
@@ -273,6 +279,16 @@ export default function EditProductPage() {
               step="0.01"
               name="price"
               defaultValue={Number(product?.price)}
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Price COGS (Giá vốn)</label>
+            <input
+              type="number"
+              step="0.01"
+              name="priceCogs"
+              defaultValue={product?.priceCogs != null ? Number(product?.priceCogs) : ''}
               className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>

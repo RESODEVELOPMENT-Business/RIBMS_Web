@@ -23,6 +23,11 @@ export default function StorePaymentMethodsPage() {
 
   const [storePaymentMethods, setStorePaymentMethods] = useState<StorePaymentMethodItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [timeStr, setTimeStr] = useState<string>('');
+
+  useEffect(() => {
+    setTimeStr(new Date().toLocaleTimeString('vi-VN'));
+  }, []);
 
   useEffect(() => {
     if (!storesLoading) void fetchData();
@@ -140,7 +145,9 @@ export default function StorePaymentMethodsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
               <div>
                 <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-500">Chi Tiết Hình Thức Thanh Toán</h2>
-                <p className="text-sm text-gray-500 font-medium mt-1">Tính đến {new Date().toLocaleTimeString('vi-VN')}</p>
+                {timeStr && (
+                  <p className="text-sm text-gray-500 font-medium mt-1">Tính đến {timeStr}</p>
+                )}
               </div>
             </div>
 

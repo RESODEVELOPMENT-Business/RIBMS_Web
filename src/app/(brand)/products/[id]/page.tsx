@@ -257,6 +257,18 @@ export default function ProductDetailPage() {
                 </span>
               }
             />
+            <InfoRow
+              label="Price COGS"
+              value={
+                product.priceCogs !== null && product.priceCogs !== undefined ? (
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">
+                    {formatCurrency(product.priceCogs)}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )
+              }
+            />
             <InfoRow label="Category" value={product.productCategoryName || `#${product.catId ?? '—'}`} />
             <InfoRow label="Category ID" value={product.catId ?? '—'} />
             <InfoRow label="Available" value={product.isAvailable ? 'Yes' : 'No'} />

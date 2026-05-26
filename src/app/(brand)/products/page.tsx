@@ -70,6 +70,17 @@ export default function ProductListPage() {
       ),
     },
     {
+      accessorKey: 'priceCogs',
+      header: 'COGS',
+      cell: ({ row }) => (
+        <span className="text-gray-600 dark:text-gray-400 font-medium">
+          {row.original.priceCogs !== null && row.original.priceCogs !== undefined
+            ? formatCurrency(row.original.priceCogs)
+            : '—'}
+        </span>
+      ),
+    },
+    {
       accessorKey: 'productType',
       header: 'Type',
       cell: ({ row }) => {
