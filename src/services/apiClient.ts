@@ -3,12 +3,14 @@ const BASE_URL =
 
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { useLoadingStore } from "@/store/loadingStore";
 
 type Interceptor<T> = (value: T) => T | Promise<T>;
 type ErrorInterceptor = (error: any) => void | Promise<void>;
 
 export type CustomRequestInit = RequestInit & {
   skipAuth?: boolean;
+  skipLoading?: boolean;
   _retry?: boolean;
 };
 
@@ -84,6 +86,13 @@ class FetchClient {
     endpoint: string,
     options: CustomRequestInit = {}
   ): Promise<T> {
+    const isBrowser = typeof window !== "undefined";
+    const shouldTrackLoading = isBrowser && !options.skipLoading;
+
+    if (shouldTrackLoading) {
+      useLoadingStore.getState().startLoading();
+    }
+
     try {
       let finalOptions: CustomRequestInit = { ...options };
 
@@ -184,6 +193,10 @@ class FetchClient {
         await interceptor(error);
       }
       throw error;
+    } finally {
+      if (shouldTrackLoading) {
+        useLoadingStore.getState().stopLoading();
+      }
     }
   }
 }

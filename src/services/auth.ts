@@ -12,5 +12,5 @@ export const refreshTokenAPI = async () => {
     throw new Error("No refresh token available");
   }
   
-  return await api.post('/auth/refresh-token', { refreshToken }, { skipAuth: true } as any);
+  return await api.post('/auth/refresh-token', { refreshToken }, { skipAuth: true, skipLoading: true } as any);
 };

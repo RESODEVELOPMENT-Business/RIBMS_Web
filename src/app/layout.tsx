@@ -4,6 +4,7 @@ import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from 'sonner';
+import { ApiLoadingIndicator } from '@/components/ui/Loader';
 
 const primaryFont = Nunito({
   subsets: ["latin"],
@@ -20,6 +21,7 @@ export default function RootLayout({
         <ThemeProvider>
           <SidebarProvider>
             <Toaster position="top-right" richColors />
+            <ApiLoadingIndicator />
             {children}
           </SidebarProvider>
         </ThemeProvider>
