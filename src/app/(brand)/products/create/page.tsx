@@ -159,8 +159,10 @@ export default function CreateProductPage() {
     const formData = new FormData(e.currentTarget);
     const selectedProductType = Number(formData.get('ProductType'));
     const selectedGeneralProductId = formData.get('GeneralProductId');
-    const price = Number(formData.get('Price'));
-    const priceCogs = formData.get('PriceCogs') ? Number(formData.get('PriceCogs')) : null;
+    const rawPrice = Number(formData.get('Price'));
+    const price = Math.round((rawPrice + Number.EPSILON) * 100) / 100;
+    const rawPriceCogs = formData.get('PriceCogs');
+    const priceCogs = rawPriceCogs ? Math.round((Number(rawPriceCogs) + Number.EPSILON) * 100) / 100 : null;
     const selectedCatId = Number(formData.get('CatId'));
 
     if (selectedStoreIds.length === 0) {

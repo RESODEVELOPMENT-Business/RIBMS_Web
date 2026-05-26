@@ -124,11 +124,15 @@ export default function EditProductPage() {
     // Always use FormData (API expects multipart/form-data)
     const payload = new FormData();
     payload.append("productName", formData.get("productName") as string);
-    payload.append("price", formData.get("price") as string);
     
-    const priceCogs = formData.get("priceCogs") as string;
-    if (priceCogs) {
-      payload.append("priceCogs", priceCogs);
+    const rawPrice = Number(formData.get("price"));
+    const price = Math.round((rawPrice + Number.EPSILON) * 100) / 100;
+    payload.append("price", price.toString());
+    
+    const rawPriceCogs = formData.get("priceCogs") as string;
+    if (rawPriceCogs && rawPriceCogs !== '') {
+      const priceCogs = Math.round((Number(rawPriceCogs) + Number.EPSILON) * 100) / 100;
+      payload.append("priceCogs", priceCogs.toString());
     }
 
     payload.append("catId", String(catIdVal));
