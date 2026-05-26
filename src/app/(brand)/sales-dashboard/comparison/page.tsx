@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
   ComparisonMode,
@@ -22,6 +22,41 @@ const formatVND = (v: number) =>
 const formatNumber = (v: number) => new Intl.NumberFormat('vi-VN').format(v);
 const formatGrowth = (rate: number) => `${rate > 0 ? '+' : ''}${rate.toFixed(1)}%`;
 
+// ── Day-of-week helpers ─────────────────────────────────────────
+
+/** 0 = Sunday … 6 = Saturday (JS Date.getDay()) */
+const WEEKDAYS = [
+  { jsDay: 1, label: 'Thứ 2', short: 'T2' },
+  { jsDay: 2, label: 'Thứ 3', short: 'T3' },
+  { jsDay: 3, label: 'Thứ 4', short: 'T4' },
+  { jsDay: 4, label: 'Thứ 5', short: 'T5' },
+  { jsDay: 5, label: 'Thứ 6', short: 'T6' },
+  { jsDay: 6, label: 'Thứ 7', short: 'T7' },
+  { jsDay: 0, label: 'CN', short: 'CN' },
+];
+
+/** Get the most recent date for a given day-of-week (0-6).
+ *  If today IS that day, return today. */
+function getMostRecentDay(jsDay: number): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayDay = today.getDay();
+  const diff = (todayDay - jsDay + 7) % 7; // how many days back
+  const target = new Date(today);
+  target.setDate(today.getDate() - diff);
+  return target;
+}
+
+/** YYYY-MM-DD */
+function toISO(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+
+/** Format as dd/MM */
+function formatShort(d: Date): string {
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function ComparisonPage() {
   const filters = useDashboardFilters();
   const {
@@ -34,6 +69,9 @@ export default function ComparisonPage() {
   const [data, setData] = useState<SalesDashboardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>('Auto');
+
+  /** Which weekday button is "active" – only meaningful when mode=DoD */
+  const [selectedWeekday, setSelectedWeekday] = useState<number | null>(null);
 
   useEffect(() => {
     if (!storesLoading) void fetchData();
@@ -65,6 +103,30 @@ export default function ComparisonPage() {
       setLoading(false);
     }
   };
+
+  // ── DoD day picker logic ────────────────────────────────────────
+
+  const handlePickWeekday = useCallback(
+    (jsDay: number) => {
+      setSelectedWeekday(jsDay);
+      const target = getMostRecentDay(jsDay);
+      const iso = toISO(target);
+      setDateRange(iso, iso); // single-day range
+      if (comparisonMode !== 'DoD') setComparisonMode('DoD');
+    },
+    [comparisonMode, setDateRange],
+  );
+
+  /** Derive the "previous day" being compared (same weekday, 1 week earlier) */
+  const dodInfo = useMemo(() => {
+    if (comparisonMode !== 'DoD' || selectedWeekday === null) return null;
+    const current = getMostRecentDay(selectedWeekday);
+    const previous = new Date(current);
+    previous.setDate(current.getDate() - 7);
+    return { current, previous };
+  }, [comparisonMode, selectedWeekday]);
+
+  // ── Export ─────────────────────────────────────────────────────
 
   const handleExport = () => {
     if (!data?.comparison) return;
@@ -121,6 +183,88 @@ export default function ComparisonPage() {
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
         <ComparisonModeSelector value={comparisonMode} onChange={setComparisonMode} />
       </div>
+
+      {/* ── DoD: Day-of-week quick picker ──────────────────────────── */}
+      {comparisonMode === 'DoD' && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              📅 Chọn ngày trong tuần để so sánh
+            </span>
+          </div>
+
+          {/* Day buttons */}
+          <div className="grid grid-cols-7 gap-2">
+            {WEEKDAYS.map((wd) => {
+              const isActive = selectedWeekday === wd.jsDay;
+              const target = getMostRecentDay(wd.jsDay);
+              const isFuture = target > new Date();
+
+              return (
+                <button
+                  key={wd.jsDay}
+                  type="button"
+                  disabled={isFuture}
+                  onClick={() => handlePickWeekday(wd.jsDay)}
+                  className={`
+                    relative flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-sm font-semibold
+                    transition-all duration-200 border-2
+                    ${isFuture
+                      ? 'opacity-40 cursor-not-allowed border-transparent bg-gray-50 dark:bg-gray-800/30'
+                      : isActive
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300 shadow-md shadow-brand-500/10 scale-[1.03]'
+                        : 'border-transparent bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600'
+                    }
+                  `}
+                >
+                  <span className="text-xs font-bold">{wd.label}</span>
+                  <span className={`text-[10px] ${isActive ? 'text-brand-500 dark:text-brand-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                    {formatShort(target)}
+                  </span>
+                  {isActive && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-brand-500 border-2 border-white dark:border-gray-900" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Period comparison chips */}
+          {dodInfo && (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3 border-t border-gray-100 dark:border-gray-800/80">
+              <div className="flex-1 flex items-center gap-3 bg-brand-50 dark:bg-brand-950/20 border border-brand-200 dark:border-brand-800/50 rounded-xl px-4 py-3">
+                <div className="w-9 h-9 rounded-lg bg-brand-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                  {dodInfo.current.getDate()}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wider">Kỳ này</div>
+                  <div className="text-sm font-bold text-gray-800 dark:text-gray-100 truncate">
+                    {dodInfo.current.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex items-center justify-center text-gray-300 dark:text-gray-600">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </div>
+
+              <div className="flex-1 flex items-center gap-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3">
+                <div className="w-9 h-9 rounded-lg bg-gray-400 dark:bg-gray-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                  {dodInfo.previous.getDate()}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Kỳ trước</div>
+                  <div className="text-sm font-bold text-gray-600 dark:text-gray-300 truncate">
+                    {dodInfo.previous.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

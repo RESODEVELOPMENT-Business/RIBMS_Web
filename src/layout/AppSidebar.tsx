@@ -83,6 +83,11 @@ const AppSidebar: React.FC = () => {
             name: "POS",
             path: "/pos",
           },
+          {
+            icon: <PieChartIcon />,
+            name: "Đơn hàng",
+            path: "/store/orders",
+          },
         ];
 
       default:

@@ -91,12 +91,19 @@ export default function OrdersReportPage() {
       { 'Chỉ số': 'Tỷ lệ hủy (%)', 'Giá trị': data.cancelRate },
     ];
 
-    const hourlyRows = data.hourlyDistribution.map((h) => ({
-      Giờ: `${h.hour}:00`,
-      'Số bill': h.invoiceCount,
-      'Số ly/món': h.itemCount,
-      'Doanh thu (VND)': h.revenue,
-    }));
+      const shiftRows = (data.shiftDistribution ?? []).map((s) => ({
+        Khung: s.shiftName,
+        'Số bill': s.invoiceCount,
+        'Số ly/món': s.itemCount,
+        'Doanh thu (VND)': s.revenue,
+      }));
+
+      const hourlyRows = data.hourlyDistribution.map((h) => ({
+        Giờ: `${h.hour}:00`,
+        'Số bill': h.invoiceCount,
+        'Số ly/món': h.itemCount,
+        'Doanh thu (VND)': h.revenue,
+      }));
 
     const dailyRows = data.dailyTrend.map((d) => ({
       Ngày: new Date(d.date).toLocaleDateString('vi-VN'),
@@ -118,7 +125,8 @@ export default function OrdersReportPage() {
         columnWidths: [22, 30],
       },
       { name: 'Tóm tắt', rows: summaryRows, columnWidths: [28, 18] },
-      { name: 'Theo khung giờ', rows: hourlyRows, columnWidths: [10, 12, 14, 18] },
+      { name: 'Theo khung giờ (4 bloc)', rows: shiftRows, columnWidths: [18, 12, 14, 18] },
+      { name: 'Theo khung giờ (bằng giờ)', rows: hourlyRows, columnWidths: [10, 12, 14, 18] },
       { name: 'Theo ngày', rows: dailyRows, columnWidths: [14, 12, 14, 18, 16] },
     ]);
   };
@@ -181,6 +189,22 @@ export default function OrdersReportPage() {
                      accent="rose" />
           </div>
 
+            {/* Shift summary (4 blocs) */}
+            {data.shiftDistribution && data.shiftDistribution.length > 0 && (
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
+                <h2 className="text-lg font-bold mb-4">Doanh thu theo 4 khung giờ</h2>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  {data.shiftDistribution.map((s) => (
+                    <div key={s.shiftCode} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800/60">
+                      <div className="text-xs text-gray-400 mb-1">{s.shiftName}</div>
+                      <div className="text-lg font-bold text-emerald-600">{formatVND(s.revenue)}</div>
+                      <div className="text-xs text-gray-500 mt-1">{formatNumber(s.invoiceCount)} bill • {formatNumber(s.itemCount)} ly/món</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
           {/* Cancel breakdown */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
             <h2 className="text-lg font-bold mb-4">Tình trạng hủy đơn</h2>
@@ -194,6 +218,7 @@ export default function OrdersReportPage() {
           {/* Hourly distribution */}
           <HourlyChart
             hourlyDistribution={data.hourlyDistribution}
+            shiftDistribution={data.shiftDistribution}
             maxHourlyRevenue={maxHourlyRevenue}
             formatVND={formatVND}
             formatNumber={formatNumber}
@@ -263,23 +288,35 @@ interface HourlyItem {
   revenue: number;
 }
 
-function HourlyChart({ hourlyDistribution, maxHourlyRevenue, formatVND, formatNumber }: {
+function HourlyChart({ hourlyDistribution, shiftDistribution, maxHourlyRevenue, formatVND, formatNumber }: {
   hourlyDistribution: HourlyItem[];
+  shiftDistribution?: { shiftCode: string; shiftName: string; invoiceCount: number; revenue: number; itemCount: number; }[] | null;
   maxHourlyRevenue: number;
   formatVND: (v: number) => string;
   formatNumber: (v: number) => string;
 }) {
-  const [hoveredHour, setHoveredHour] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
 
-  const hoveredData = hoveredHour !== null
-    ? hourlyDistribution.find(h => h.hour === hoveredHour) ?? null
+  const usingShifts = Array.isArray(shiftDistribution) && shiftDistribution.length > 0;
+
+  const dataItems = usingShifts
+    ? shiftDistribution!.map((s, idx) => ({
+        id: idx,
+        label: s.shiftName,
+        revenue: s.revenue,
+        invoiceCount: s.invoiceCount,
+        itemCount: s.itemCount,
+      }))
+    : hourlyDistribution.map(h => ({ id: h.hour, label: `${h.hour}`, revenue: h.revenue, invoiceCount: h.invoiceCount, itemCount: h.itemCount }));
+
+  const hoveredData = hovered !== null
+    ? dataItems.find(d => d.id === hovered) ?? null
     : null;
 
-  const peak = hourlyDistribution.reduce((max, cur) =>
-    cur.revenue > max.revenue ? cur : max, hourlyDistribution[0]);
-  const totalBills = hourlyDistribution.reduce((s, h) => s + h.invoiceCount, 0);
-  const activeHours = hourlyDistribution.filter(h => h.invoiceCount > 0).length;
-  const totalRevenue = hourlyDistribution.reduce((s, h) => s + h.revenue, 0);
+  const peak = dataItems.reduce((max, cur) => (cur.revenue > max.revenue ? cur : max), dataItems[0]);
+  const totalBills = dataItems.reduce((s, h) => s + h.invoiceCount, 0);
+  const activeHours = dataItems.filter(h => h.invoiceCount > 0).length;
+  const totalRevenue = dataItems.reduce((s, h) => s + h.revenue, 0);
   const avgRevenuePerHour = activeHours > 0 ? totalRevenue / activeHours : 0;
 
   return (
@@ -308,7 +345,7 @@ function HourlyChart({ hourlyDistribution, maxHourlyRevenue, formatVND, formatNu
         {hoveredData ? (
           <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 rounded-xl px-5 py-2 text-sm transition-all duration-150 animate-in fade-in">
             <span className="font-semibold text-gray-700 dark:text-gray-200">
-              🕐 {hoveredData.hour}:00 – {hoveredData.hour}:59
+              {usingShifts ? '⏱' : '🕐'} {usingShifts ? hoveredData.label : `${hoveredData.label}:00 – ${hoveredData.label}:59`}
             </span>
             <span className="text-emerald-600 dark:text-emerald-400 font-medium">
               💰 Doanh thu: {formatVND(hoveredData.revenue)}
@@ -343,18 +380,18 @@ function HourlyChart({ hourlyDistribution, maxHourlyRevenue, formatVND, formatNu
 
         {/* Bars */}
         <div className="ml-16">
-          <div className="flex items-end gap-[3px] min-w-[600px]" style={{ height: '220px' }}>
-            {hourlyDistribution.map((h) => {
+          <div className="flex items-end gap-[12px] min-w-[600px]" style={{ height: '220px' }}>
+            {dataItems.map((h) => {
               const ratio = maxHourlyRevenue > 0 ? (h.revenue / maxHourlyRevenue) * 100 : 0;
-              const isPeak = h.revenue === maxHourlyRevenue && h.revenue > 0;
+              const isPeak = h.revenue === peak.revenue && h.revenue > 0;
               const isHighTraffic = ratio >= 60;
-              const isHovered = hoveredHour === h.hour;
+              const isHovered = hovered === h.id;
               return (
                 <div
-                  key={h.hour}
-                  className="flex-1 flex flex-col items-center justify-end h-full relative min-w-[22px] cursor-pointer"
-                  onMouseEnter={() => setHoveredHour(h.hour)}
-                  onMouseLeave={() => setHoveredHour(null)}
+                  key={h.id}
+                  className="flex-1 flex flex-col items-center justify-end h-full relative min-w-[80px] cursor-pointer"
+                  onMouseEnter={() => setHovered(h.id)}
+                  onMouseLeave={() => setHovered(null)}
                 >
                   {/* Value label */}
                   <div className={`text-[10px] font-medium text-gray-600 dark:text-gray-300 mb-1 whitespace-nowrap transition-opacity duration-150 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
@@ -369,14 +406,14 @@ function HourlyChart({ hourlyDistribution, maxHourlyRevenue, formatVND, formatNu
                         : isHighTraffic
                           ? 'bg-gradient-to-t from-brand-600 to-indigo-400'
                           : 'bg-gradient-to-t from-brand-500/80 to-indigo-400/60'}
-                      ${isHovered ? 'opacity-100 scale-x-110 shadow-md' : ''}`}
-                    style={{ height: `${Math.max(ratio, h.revenue > 0 ? 3 : 0)}%` }}
+                      ${isHovered ? 'opacity-100 scale-x-105 shadow-md' : ''}`}
+                    style={{ height: `${Math.max(ratio, h.revenue > 0 ? 8 : 0)}%` }}
                   />
 
                   {/* X-axis label */}
-                  <div className={`text-[10px] mt-1.5 font-medium transition-colors
+                  <div className={`text-[12px] mt-2 font-medium text-center transition-colors
                     ${isPeak ? 'text-amber-600 dark:text-amber-400 font-bold' : isHovered ? 'text-gray-700 dark:text-gray-200 font-semibold' : 'text-gray-400'}`}>
-                    {h.hour}h
+                    {usingShifts ? h.label : `${h.label}h`}
                   </div>
                 </div>
               );
@@ -389,7 +426,9 @@ function HourlyChart({ hourlyDistribution, maxHourlyRevenue, formatVND, formatNu
       <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="text-center">
           <div className="text-[11px] text-gray-400 uppercase tracking-wider">Giờ cao điểm</div>
-          <div className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-0.5">{peak.hour}:00 - {peak.hour}:59</div>
+          <div className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+            {usingShifts ? peak.label : `${peak.label}:00 - ${peak.label}:59`}
+          </div>
         </div>
         <div className="text-center">
           <div className="text-[11px] text-gray-400 uppercase tracking-wider">DT cao điểm</div>
@@ -401,7 +440,9 @@ function HourlyChart({ hourlyDistribution, maxHourlyRevenue, formatVND, formatNu
         </div>
         <div className="text-center">
           <div className="text-[11px] text-gray-400 uppercase tracking-wider">Giờ có bill</div>
-          <div className="text-sm font-bold text-gray-700 dark:text-gray-200 mt-0.5">{activeHours}/24 giờ ({totalBills} bill)</div>
+          <div className="text-sm font-bold text-gray-700 dark:text-gray-200 mt-0.5">
+            {usingShifts ? `${activeHours}/4 khung (${totalBills} bill)` : `${activeHours}/24 giờ (${totalBills} bill)`}
+          </div>
         </div>
       </div>
     </div>

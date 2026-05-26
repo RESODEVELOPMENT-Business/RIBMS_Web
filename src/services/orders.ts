@@ -10,12 +10,18 @@ export interface OrderDetail {
   isAddition: boolean;
 }
 
+export interface OrderPayment {
+  type: number;
+}
+
 export interface OrderItem {
   orderId: number;
   invoiceId: string;
   storeId: number;
   orderStatus: number;
   orderType: number;
+  paymentType?: number | null;
+  paymentTypeName?: string | null;
   checkInDate: string;
   totalAmount: number;
   discount: number;
@@ -23,6 +29,7 @@ export interface OrderItem {
   notes?: string;
   itemCount: number;
   orderDetails: OrderDetail[];
+  payments?: OrderPayment[];
 }
 
 export interface PaginatedResult<T> {
@@ -31,6 +38,11 @@ export interface PaginatedResult<T> {
   total: number;
   totalPages: number;
   items: T[];
+}
+
+export interface UpdateOrderPayload {
+  status?: number | null;
+  paymentType?: number | null;
 }
 
 export const getOrders = async (
@@ -52,4 +64,11 @@ export const getOrders = async (
     endpoint += `&toDate=${toDate}`;
   }
   return await apiClient(endpoint);
+};
+
+export const updateOrder = async (orderId: number, payload: UpdateOrderPayload) => {
+  return await apiClient(`/orders/${orderId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 };

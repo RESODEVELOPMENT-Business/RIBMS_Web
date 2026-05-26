@@ -6,8 +6,8 @@ import {
   getOperationsReport,
   OperationsReportData,
 } from '@/services/salesDashboard';
-import { TimeIcon, BoltIcon, GridIcon, CheckCircleIcon } from '@/icons';
-import DashboardFilters from '../components/DashboardFilters';
+import { TimeIcon, BoltIcon, GridIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, DollarLineIcon, TaskIcon } from '@/icons';
+import DatePicker from '@/components/form/date-picker';
 import ExportExcelButton from '../components/ExportExcelButton';
 import { useDashboardFilters } from '../hooks/useDashboardFilters';
 import {
@@ -16,40 +16,67 @@ import {
 } from '../utils/excelExport';
 
 const formatVND = (v: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(v);
 const formatNumber = (v: number) => new Intl.NumberFormat('vi-VN').format(v);
+
+const PRESETS: { label: string; days: number }[] = [
+  { label: 'Hôm nay', days: 0 },
+  { label: '3 ngày qua', days: 3 },
+  { label: '7 ngày qua', days: 7 },
+  { label: '30 ngày qua', days: 30 },
+];
 
 export default function OperationsReportPage() {
   const filters = useDashboardFilters();
   const {
     stores, storesLoading,
-    selectedStoreId, setSelectedStoreId,
     fromDate, toDate, setDateRange,
     resolveBrandId,
   } = filters;
 
+  const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isCompareMode, setIsCompareMode] = useState(false);
+
   const [data, setData] = useState<OperationsReportData | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClose = () => setDropdownOpen(false);
+    window.addEventListener('click', handleClose);
+    return () => window.removeEventListener('click', handleClose);
+  }, [dropdownOpen]);
+
+  // Disable comparison mode if only 1 store is selected
+  useEffect(() => {
+    if (selectedStoreIds.length === 1) {
+      setIsCompareMode(false);
+    }
+  }, [selectedStoreIds]);
 
   useEffect(() => {
     if (!storesLoading) void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, fromDate, toDate, storesLoading]);
+  }, [selectedStoreIds, fromDate, toDate, storesLoading]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const brandIdToUse = resolveBrandId();
-      if (!selectedStoreId && !brandIdToUse) {
+      if (selectedStoreIds.length === 0 && !brandIdToUse) {
         setData(null);
         setLoading(false);
         return;
       }
       const res = await getOperationsReport(
-        selectedStoreId ? Number(selectedStoreId) : null,
-        !selectedStoreId ? brandIdToUse : null,
+        null,
+        selectedStoreIds.length === 0 ? brandIdToUse : null,
         fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate ? `${toDate}T23:59:59` : undefined,
+        selectedStoreIds.length > 0 ? selectedStoreIds : null,
       );
       setData(res?.data ?? null);
     } catch (err: any) {
@@ -61,14 +88,20 @@ export default function OperationsReportPage() {
     }
   };
 
-  const showStorePerformance = !selectedStoreId && data && data.storePerformance.length > 1;
+  const showStorePerformance = data && data.storePerformance.length > 1;
 
   const handleExport = () => {
     if (!data) return;
-    const storeName =
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.name ||
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
-      undefined;
+    let storeName = 'Tất cả cửa hàng (Toàn hệ thống)';
+    if (selectedStoreIds.length > 0) {
+      const names = selectedStoreIds
+        .map((id) => {
+          const s = stores.find((st) => (st.id || st.storeId) === id);
+          return s?.name || s?.storeName;
+        })
+        .filter(Boolean);
+      storeName = names.join(', ');
+    }
 
     const summaryRows = [
       { 'Chỉ số': 'Số ngày trong khoảng', 'Giá trị': data.totalDaysInRange },
@@ -86,6 +119,7 @@ export default function OperationsReportPage() {
       'Số ly/món': s.itemCount,
       'Doanh thu (VND)': s.revenue,
       'AOV (VND)': s.averageOrderValue,
+      'Xử lý TB (phút)': s.averageProcessingMinutes,
       'Tỷ trọng (%)': s.sharePercent,
     }));
 
@@ -113,9 +147,39 @@ export default function OperationsReportPage() {
         columnWidths: [22, 30],
       },
       { name: 'Tóm tắt', rows: summaryRows, columnWidths: [28, 18] },
-      { name: 'Theo ca', rows: shiftRows, columnWidths: [12, 22, 12, 14, 18, 14, 14] },
+      { name: 'Theo ca', rows: shiftRows, columnWidths: [12, 22, 12, 14, 18, 14, 16, 14] },
       { name: 'Theo cửa hàng', rows: storeRows, columnWidths: [6, 30, 12, 14, 18, 14, 12, 16, 12] },
     ]);
+  };
+
+  const filteredStores = stores.filter((s) => {
+    const name = (s.name || s.storeName || '').toLowerCase();
+    return name.includes(searchTerm.toLowerCase());
+  });
+
+  const dateRange = `${fromDate} to ${toDate}`;
+
+  const handleDateRangeChange = React.useCallback(
+    (selectedDates: Date[], dateStr: string) => {
+      if (dateStr.includes(' to ') || selectedDates.length >= 2) {
+        const parts = dateStr.split(' to ');
+        const from = parts[0];
+        const to = parts[1] || parts[0];
+
+        if (from) setDateRange(from, to || from);
+      }
+    },
+    [setDateRange],
+  );
+
+  const applyPreset = (days: number) => {
+    const today = new Date();
+    const start = new Date();
+    start.setDate(today.getDate() - days);
+    setDateRange(
+      start.toISOString().split('T')[0],
+      today.toISOString().split('T')[0],
+    );
   };
 
   return (
@@ -132,16 +196,157 @@ export default function OperationsReportPage() {
         <ExportExcelButton onClick={handleExport} disabled={loading || !data} />
       </div>
 
-      <DashboardFilters
-        stores={stores}
-        storesLoading={storesLoading}
-        selectedStoreId={selectedStoreId}
-        fromDate={fromDate}
-        toDate={toDate}
-        onStoreChange={setSelectedStoreId}
-        onDateRangeChange={setDateRange}
-        datePickerId="operations-report-date-range"
-      />
+      {/* Filters Section */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-xl shadow-gray-100/50 dark:shadow-none space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          {/* Store Selection (Multi-select) */}
+          <div className="flex flex-col gap-1.5 relative" onClick={(e) => e.stopPropagation()}>
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Cửa Hàng
+            </label>
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              disabled={storesLoading}
+              className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none disabled:opacity-50 flex items-center justify-between text-left h-[42px]"
+            >
+              <span className="truncate pr-2">
+                {storesLoading
+                  ? 'Đang tải cửa hàng...'
+                  : selectedStoreIds.length === 0
+                    ? 'Tất cả cửa hàng (Toàn hệ thống)'
+                    : `Đang chọn ${selectedStoreIds.length} cửa hàng`}
+              </span>
+              {dropdownOpen ? (
+                <ChevronUpIcon className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute top-[100%] left-0 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-50 p-4 space-y-3">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm cửa hàng..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
+                />
+
+                <div className="flex justify-between items-center text-[11px] font-bold pb-2 border-b border-gray-100 dark:border-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStoreIds([])}
+                    className="text-brand-600 dark:text-brand-400 hover:opacity-85 transition-opacity"
+                  >
+                    Chọn tất cả (Toàn hệ thống)
+                  </button>
+                  {selectedStoreIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStoreIds([])}
+                      className="text-rose-500 hover:text-rose-600 transition-colors"
+                    >
+                      Bỏ chọn tất cả
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                  {filteredStores.map((s) => {
+                    const storeId = s.id || s.storeId;
+                    const storeName = s.name || s.storeName;
+                    const isSelected = selectedStoreIds.includes(storeId);
+                    return (
+                      <label
+                        key={storeId}
+                        className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer select-none text-xs font-medium transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            if (isSelected) {
+                              setSelectedStoreIds(selectedStoreIds.filter((id) => id !== storeId));
+                            } else {
+                              setSelectedStoreIds([...selectedStoreIds, storeId]);
+                            }
+                          }}
+                          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
+                        />
+                        <span className={isSelected ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-gray-700 dark:text-gray-300'}>
+                          {storeName}
+                        </span>
+                      </label>
+                    );
+                  })}
+                  {filteredStores.length === 0 && (
+                    <div className="text-center py-4 text-xs text-gray-400">Không tìm thấy cửa hàng</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Date Picker */}
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Khoảng Thời Gian
+            </label>
+            <DatePicker
+              id="operations-report-date-range"
+              mode="range"
+              defaultDate={dateRange}
+              onChange={handleDateRangeChange}
+            />
+          </div>
+        </div>
+
+        {/* Presets and Comparison Mode Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-gray-100 dark:border-gray-800/80">
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => applyPreset(p.days)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sleek Switch for Comparison Mode */}
+          <div className="flex items-center gap-3 self-start sm:self-center">
+            <label htmlFor="compare-mode-toggle" className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="compare-mode-toggle"
+                checked={isCompareMode}
+                onChange={(e) => setIsCompareMode(e.target.checked)}
+                disabled={selectedStoreIds.length === 1 || (data !== null && data.storePerformance.length < 2)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+              <span className="ml-2.5 text-xs font-bold text-gray-600 dark:text-gray-300 select-none">
+                Chế độ so sánh đối chiếu
+              </span>
+            </label>
+            {selectedStoreIds.length === 1 && (
+              <span className="text-[10px] text-amber-500 font-semibold animate-pulse">
+                (Chọn từ 2 cửa hàng hoặc tất cả)
+              </span>
+            )}
+            {data && data.storePerformance.length < 2 && selectedStoreIds.length !== 1 && (
+              <span className="text-[10px] text-amber-500 font-semibold animate-pulse">
+                (Hệ thống chỉ có 1 cửa hàng, không thể so sánh)
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -152,53 +357,363 @@ export default function OperationsReportPage() {
         </div>
       ) : !data ? (
         <EmptyState />
+      ) : isCompareMode ? (
+        /* COMPARISON MODE UI */
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* 1. Revenue Leaderboard */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6 space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <DollarLineIcon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-base text-gray-900 dark:text-white truncate">
+                    So sánh doanh thu và số bill
+                  </h3>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-full shrink-0">
+                  VND
+                </span>
+              </div>
+
+              <div className="space-y-5">
+                {(() => {
+                  const sortedStores = [...data.storePerformance].sort((a, b) => b.revenue - a.revenue);
+                  const maxRevenue = sortedStores[0]?.revenue || 1;
+                  return sortedStores.map((s, idx) => {
+                    const ratio = (s.revenue / maxRevenue) * 100;
+                    return (
+                      <div key={s.storeId} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-semibold">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[10px] ${idx === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 font-extrabold' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'
+                              }`}>
+                              {idx + 1}
+                            </span>
+                            <span className="text-gray-800 dark:text-gray-200">{s.storeName}</span>
+                            {idx === 0 && (
+                              <span className="text-[9px] bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                Doanh thu cao nhất
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-gray-900 dark:text-white font-bold">{formatVND(s.revenue)}</span>
+                        </div>
+
+                        <div className="w-full bg-gray-50 dark:bg-gray-800/60 rounded-full h-3 relative overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r ${idx === 0 ? 'from-amber-400 to-orange-500' : 'from-emerald-400 to-teal-500'
+                              }`}
+                            style={{ width: `${ratio}%` }}
+                          />
+                        </div>
+
+                        <div className="flex justify-between text-[10px] text-gray-400 font-medium">
+                          <span>{formatNumber(s.invoiceCount)} bill</span>
+                          <span>AOV: {formatVND(s.averageOrderValue)}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* 2. Processing Speed Leaderboard */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6 space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                  <TimeIcon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-base text-gray-900 dark:text-white truncate">
+                    Tốc độ xử lý trung bình
+                  </h3>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 rounded-full shrink-0">
+                  phút
+                </span>
+              </div>
+
+              <div className="space-y-5">
+                {(() => {
+                  const activeStores = data.storePerformance.filter(s => s.averageProcessingMinutes > 0);
+                  const sortedStores = [...activeStores].sort((a, b) => a.averageProcessingMinutes - b.averageProcessingMinutes);
+                  const maxTime = Math.max(...data.storePerformance.map(s => s.averageProcessingMinutes), 1);
+
+                  return data.storePerformance.map((s) => {
+                    const isFastest = sortedStores[0]?.storeId === s.storeId;
+                    const ratio = (s.averageProcessingMinutes / maxTime) * 100;
+                    return (
+                      <div key={s.storeId} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-semibold">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-800 dark:text-gray-200">{s.storeName}</span>
+                            {isFastest && (
+                              <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                Nhanh nhất
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-gray-900 dark:text-white font-bold">{s.averageProcessingMinutes.toFixed(1)} phút</span>
+                        </div>
+
+                        <div className="w-full bg-gray-50 dark:bg-gray-800/60 rounded-full h-3 relative overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r ${isFastest ? 'from-emerald-400 to-teal-500' : 'from-indigo-400 to-blue-500'
+                              }`}
+                            style={{ width: `${ratio}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+          </div>
+
+          {/* 3. Productivity & Peak Hours Compare Card */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+              <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+                <BoltIcon className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-base text-gray-900 dark:text-white truncate">
+                  Năng suất vận hành và khung giờ cao điểm
+                </h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                  Mật độ hóa đơn / giờ hoạt động và thời gian khách tập trung đông nhất
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {data.storePerformance.map((s) => {
+                const isMostProductive = s.averageInvoicesPerHour === Math.max(...data.storePerformance.map(x => x.averageInvoicesPerHour));
+                return (
+                  <div key={s.storeId} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800/60 bg-gray-50/50 dark:bg-gray-800/40 space-y-3 relative overflow-hidden">
+                    {isMostProductive && (
+                      <div className="absolute top-0 right-0 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg uppercase tracking-wider">
+                        Hiệu suất cao nhất
+                      </div>
+                    )}
+                    <div className="font-bold text-sm text-gray-800 dark:text-gray-100 pr-12 truncate">{s.storeName}</div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="bg-white dark:bg-gray-900 p-2 rounded-lg border border-gray-100 dark:border-gray-800/40 text-center">
+                        <div className="text-[10px] text-gray-400 font-semibold uppercase">Bill / Giờ TB</div>
+                        <div className="text-lg font-bold text-gray-900 dark:text-white mt-0.5">
+                          {s.averageInvoicesPerHour.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-gray-900 p-2 rounded-lg border border-gray-100 dark:border-gray-800/40 text-center">
+                        <div className="text-[10px] text-gray-400 font-semibold uppercase">Giờ cao điểm</div>
+                        <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                          {s.peakHour}h:00
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between border-t border-gray-100 dark:border-gray-800/60 pt-2 mt-1">
+                      <span>Tổng ly/món: <strong className="text-gray-700 dark:text-gray-200">{formatNumber(s.itemCount)}</strong></span>
+                      <span>AOV: <strong className="text-gray-700 dark:text-gray-200">{formatVND(s.averageOrderValue)}</strong></span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. Shift Performance Comparison */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6 space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                <TimeIcon className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-base text-gray-900 dark:text-white truncate">
+                  So sánh năng suất theo 4 khung giờ giữa các cửa hàng
+                </h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                  Đo lường năng suất, doanh thu và số bill của từng cửa hàng theo các ca làm việc
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {data.storePerformance.map((store) => {
+                return (
+                  <div key={store.storeId} className="space-y-3 pb-4 border-b border-gray-100/60 dark:border-gray-800/40 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0" />
+                        <span>{store.storeName}</span>
+                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-1 bg-gray-50 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 rounded-full">
+                        Tổng DT ca: {formatVND(store.shiftPerformance?.reduce((acc, x) => acc + x.revenue, 0) || 0)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {store.shiftPerformance?.map((s, idx) => {
+                        const gradients = [
+                          'from-amber-500 to-orange-500',
+                          'from-emerald-500 to-teal-500',
+                          'from-indigo-500 to-blue-500',
+                          'from-rose-500 to-pink-500',
+                        ];
+                        const g = gradients[idx % gradients.length];
+                        
+                        let timeFrame = '06h-10h';
+                        if (s.shiftCode === 'SH02') timeFrame = '10h-14h';
+                        if (s.shiftCode === 'SH03') timeFrame = '14h-18h';
+                        if (s.shiftCode === 'SH04') timeFrame = '18h-22h';
+
+                        return (
+                          <div key={s.shiftCode}
+                            className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{s.shiftName}</div>
+                                <div className="text-xs font-bold text-gray-900 dark:text-white">{timeFrame}</div>
+                              </div>
+                              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                {s.sharePercent.toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="text-lg font-bold text-gray-900 dark:text-white">
+                              {formatVND(s.revenue)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatNumber(s.invoiceCount)} bill • AOV {formatVND(s.averageOrderValue)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Xử lý TB {s.averageProcessingMinutes.toFixed(1)} phút
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden mt-3">
+                              <div className={`bg-gradient-to-r ${g} h-full rounded-full transition-all duration-500`}
+                                style={{ width: `${s.sharePercent}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(!store.shiftPerformance || store.shiftPerformance.length === 0) && (
+                        <div className="col-span-4 text-center py-4 text-xs text-gray-400">Không có dữ liệu ca</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Detailed table at the bottom */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
+            <h2 className="text-lg font-bold mb-4">Bảng Đối Chiếu Số Liệu Chi Tiết</h2>
+            <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
+              <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-800/50">
+                  <tr>
+                    <th className="px-4 py-2.5 text-center font-bold text-gray-500 uppercase tracking-wider w-12">#</th>
+                    <th className="px-4 py-2.5 text-left font-bold text-gray-500 uppercase tracking-wider">Cửa hàng</th>
+                    <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Bill</th>
+                    <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Ly/món</th>
+                    <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Doanh thu</th>
+                    <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">AOV</th>
+                    <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Bill/giờ</th>
+                    <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Xử lý TB (phút)</th>
+                    <th className="px-4 py-2.5 text-center font-bold text-gray-500 uppercase tracking-wider">Peak</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {data.storePerformance.map((s, idx) => (
+                    <tr key={s.storeId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
+                      <td className="px-4 py-2.5 text-center text-gray-500">{idx + 1}</td>
+                      <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">
+                        {s.storeName}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-gray-600 dark:text-gray-300">
+                        {formatNumber(s.invoiceCount)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-gray-600 dark:text-gray-300">
+                        {formatNumber(s.itemCount)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatVND(s.revenue)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-gray-600 dark:text-gray-300">
+                        {formatVND(s.averageOrderValue)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-gray-600 dark:text-gray-300">
+                        {s.averageInvoicesPerHour.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-gray-600 dark:text-gray-300">
+                        {s.averageProcessingMinutes.toFixed(1)}
+                      </td>
+                      <td className="px-4 py-2.5 text-center text-brand-600 dark:text-brand-400 font-semibold">
+                        {s.peakHour}h
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       ) : (
+        /* STANDARD AGGREGATED VIEW */
         <div className="space-y-6">
           {/* KPI cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard icon={<BoltIcon className="w-5 h-5" />}
-                     label="Bill / giờ TB"
-                     value={data.averageInvoicesPerHour.toFixed(2)}
-                     subValue={`${formatNumber(data.totalDaysInRange)} ngày`}
-                     accent="emerald" />
+              label="Bill / giờ TB"
+              value={data.averageInvoicesPerHour.toFixed(2)}
+              subValue={`${formatNumber(data.totalDaysInRange)} ngày`}
+              accent="emerald" />
             <KpiCard icon={<GridIcon className="w-5 h-5" />}
-                     label="Ly/món / giờ TB"
-                     value={data.averageItemsPerHour.toFixed(2)}
-                     accent="indigo" />
+              label="Ly/món / giờ TB"
+              value={data.averageItemsPerHour.toFixed(2)}
+              accent="indigo" />
             <KpiCard icon={<TimeIcon className="w-5 h-5" />}
-                     label="Thời gian xử lý TB"
-                     value={`${data.averageProcessingMinutes.toFixed(1)} phút`}
-                     subValue="từ check-in → hoàn tất"
-                     accent="amber" />
+              label="Thời gian xử lý TB"
+              value={`${data.averageProcessingMinutes.toFixed(1)} phút`}
+              subValue="từ check-in → hoàn tất"
+              accent="amber" />
             <KpiCard icon={<CheckCircleIcon className="w-5 h-5" />}
-                     label="Khung giờ cao điểm"
-                     value={`${data.peakHour}:00 - ${data.peakHour}:59`}
-                     subValue={`${formatNumber(data.peakHourInvoices)} bill`}
-                     accent="rose" />
+              label="Khung giờ cao điểm"
+              value={`${data.peakHour}:00 - ${data.peakHour}:59`}
+              subValue={`${formatNumber(data.peakHourInvoices)} bill`}
+              accent="rose" />
           </div>
 
           {/* Shift performance */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
-            <h2 className="text-lg font-bold mb-4">Năng suất theo ca</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+            <h2 className="text-lg font-bold mb-4">Năng suất theo 4 khung giờ</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               {data.shiftPerformance.map((s, idx) => {
                 const gradients = [
                   'from-amber-500 to-orange-500',
                   'from-emerald-500 to-teal-500',
                   'from-indigo-500 to-blue-500',
                   'from-rose-500 to-pink-500',
-                  'from-purple-500 to-violet-500',
                 ];
                 const g = gradients[idx % gradients.length];
                 return (
                   <div key={s.shiftCode}
-                       className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60">
+                    className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <div className="text-xs text-gray-400 mb-1">{s.shiftCode}</div>
-                        <div className="text-sm font-bold text-gray-800 dark:text-gray-100">{s.shiftName}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{s.shiftName}</div>
+                        <div className="text-xs font-bold text-gray-900 dark:text-white">
+                          {s.shiftCode === 'SH01' ? '06h-10h' : s.shiftCode === 'SH02' ? '10h-14h' : s.shiftCode === 'SH03' ? '14h-18h' : '18h-22h'}
+                        </div>
                       </div>
-                      <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
                         {s.sharePercent.toFixed(1)}%
                       </span>
                     </div>
@@ -208,9 +723,12 @@ export default function OperationsReportPage() {
                     <div className="text-xs text-gray-500 mt-1">
                       {formatNumber(s.invoiceCount)} bill • AOV {formatVND(s.averageOrderValue)}
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Xử lý TB {s.averageProcessingMinutes.toFixed(1)} phút
+                    </div>
                     <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden mt-3">
                       <div className={`bg-gradient-to-r ${g} h-full rounded-full transition-all duration-500`}
-                           style={{ width: `${s.sharePercent}%` }} />
+                        style={{ width: `${s.sharePercent}%` }} />
                     </div>
                   </div>
                 );

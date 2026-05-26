@@ -104,6 +104,14 @@ export interface DailyRevenueItem {
   itemCount: number;
 }
 
+export interface ShiftRevenueItem {
+  shiftCode: string;
+  shiftName: string;
+  invoiceCount: number;
+  revenue: number;
+  itemCount: number;
+}
+
 export interface OrdersReportData {
   totalInvoices: number;
   totalRevenue: number;
@@ -114,6 +122,7 @@ export interface OrdersReportData {
   preCancelledOrders: number;
   cancelRate: number;
   hourlyDistribution: HourlyRevenueItem[];
+  shiftDistribution?: ShiftRevenueItem[];
   dailyTrend: DailyRevenueItem[];
 }
 
@@ -124,9 +133,21 @@ export interface ProductSalesItem {
   productName: string;
   productCode: string;
   categoryName: string;
+  generalProductId?: number | null;
   quantity: number;
   revenue: number;
   revenueShare: number;
+}
+
+export interface ProductSalesGroupItem {
+  parentProductId: number;
+  parentProductName: string;
+  parentProductCode: string;
+  categoryName: string;
+  quantity: number;
+  revenue: number;
+  revenueShare: number;
+  childProducts: ProductSalesItem[];
 }
 
 export interface CategoryRevenueItem {
@@ -139,6 +160,7 @@ export interface CategoryRevenueItem {
 }
 
 export interface ProductsReportData {
+  productsByParent: ProductSalesGroupItem[];
   topSellingProducts: ProductSalesItem[];
   slowMovingProducts: ProductSalesItem[];
   categoryRevenues: CategoryRevenueItem[];
@@ -155,6 +177,7 @@ export interface ShiftPerformanceItem {
   itemCount: number;
   revenue: number;
   averageOrderValue: number;
+  averageProcessingMinutes: number;
   sharePercent: number;
 }
 
@@ -168,6 +191,7 @@ export interface StoreOperationItem {
   averageInvoicesPerHour: number;
   averageProcessingMinutes: number;
   peakHour: number;
+  shiftPerformance?: ShiftPerformanceItem[];
 }
 
 export interface OperationsReportData {
@@ -384,9 +408,17 @@ export const getOperationsReport = async (
   brandId?: number | null,
   fromDate?: string,
   toDate?: string,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
-  return await apiClient(`/orders/dashboard/operations-report?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  if (storeIds && storeIds.length > 0) {
+    storeIds.forEach((id) => params.append('storeIds', id.toString()));
+  }
+  return await apiClient(`/orders/dashboard/operations-report?${params.toString()}`);
 };
 
 export const getCustomerMarketingReport = async (

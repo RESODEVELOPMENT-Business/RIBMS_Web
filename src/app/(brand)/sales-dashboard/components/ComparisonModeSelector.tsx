@@ -10,7 +10,7 @@ interface Props {
 
 const MODES: { code: ComparisonMode; label: string; tooltip: string }[] = [
   { code: 'Auto', label: 'Tự động', tooltip: 'Lùi cùng độ dài range' },
-  { code: 'DoD', label: 'DoD', tooltip: 'Hôm nay vs hôm qua' },
+  { code: 'DoD', label: 'DoD', tooltip: 'Ngày được chọn vs cùng thứ tuần trước' },
   { code: 'WoW', label: 'WoW', tooltip: 'Tuần này vs tuần trước (lùi 7 ngày)' },
   { code: 'MoM', label: 'MoM', tooltip: 'Tháng này vs tháng trước' },
   { code: 'YoY', label: 'YoY', tooltip: 'Năm này vs năm trước' },

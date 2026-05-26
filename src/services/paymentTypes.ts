@@ -23,6 +23,10 @@ export const getPaymentTypes = async (page = 1, size = 100) => {
   return await apiClient(`/payment-types?page=${page}&size=${size}`);
 };
 
+export const getPaymentTypesByBrand = async (page = 1, size = 100) => {
+  return await apiClient(`/payment-types?page=${page}&size=${size}`);
+};
+
 export const getPaymentTypeById = async (id: number | string) => {
   return await apiClient(`/payment-types/${id}`);
 };

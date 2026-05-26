@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   getProductsReport,
+  ProductSalesGroupItem,
+  ProductSalesItem,
   ProductsReportData,
 } from '@/services/salesDashboard';
 import { BoxCubeIcon, PieChartIcon } from '@/icons';
@@ -70,6 +72,33 @@ export default function ProductsReportPage() {
       stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
       undefined;
 
+    const parentRows = buildParentRows(data).flatMap((group, groupIdx) => [
+      {
+        STT: groupIdx + 1,
+        Loai: 'Tổng',
+        'Sản phẩm cha': group.parentProductName,
+        'Mã cha': group.parentProductCode,
+        'Sản phẩm con': '',
+        'Mã con': '',
+        Nhóm: group.categoryName,
+        'Số lượng': group.quantity,
+        'Doanh thu (VND)': group.revenue,
+        'Tỷ trọng (%)': group.revenueShare,
+      },
+      ...group.childProducts.map((child, childIdx) => ({
+        STT: `${groupIdx + 1}.${childIdx + 1}`,
+        Loai: 'Con',
+        'Sản phẩm cha': '',
+        'Mã cha': '',
+        'Sản phẩm con': `↳ ${child.productName}`,
+        'Mã con': child.productCode,
+        Nhóm: child.categoryName,
+        'Số lượng': child.quantity,
+        'Doanh thu (VND)': child.revenue,
+        'Tỷ trọng (%)': child.revenueShare,
+      })),
+    ]);
+
     const productRows = (rows: typeof data.topSellingProducts) =>
       rows.map((p, idx) => ({
         STT: idx + 1,
@@ -95,6 +124,11 @@ export default function ProductsReportPage() {
           },
         }),
         columnWidths: [22, 30],
+      },
+      {
+        name: 'Theo sản phẩm cha',
+        rows: parentRows,
+        columnWidths: [8, 8, 28, 14, 28, 14, 18, 12, 18, 14],
       },
       { name: 'Top bán chạy', rows: productRows(data.topSellingProducts), columnWidths: [6, 32, 14, 18, 12, 18, 14] },
       { name: 'Bán chậm', rows: productRows(data.slowMovingProducts), columnWidths: [6, 32, 14, 18, 12, 18, 14] },
@@ -158,6 +192,8 @@ export default function ProductsReportPage() {
                          value={data.categoryRevenues.length.toString()}
                          accent="amber" />
           </div>
+
+          <ParentProductTable rows={buildParentRows(data)} />
 
           {/* Tabs */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
@@ -242,6 +278,151 @@ function ProductTable({ rows, title }: { rows: any[]; title: string }) {
       )}
     </div>
   );
+}
+
+function ParentProductTable({ rows = [] }: { rows?: ProductSalesGroupItem[] }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6 space-y-4">
+      <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">
+            Gom theo sản phẩm cha
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Hiển thị tổng hợp theo sản phẩm cha và các SKU con đã phát sinh doanh thu.
+          </p>
+        </div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          {rows.length} nhóm
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">
+          Không có dữ liệu sản phẩm cha trong kỳ.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-gray-800">
+          <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-800/50">
+              <tr>
+                <th className="px-4 py-2.5 text-left font-bold text-gray-500 uppercase tracking-wider">Tên sản phẩm</th>
+                <th className="px-4 py-2.5 text-left font-bold text-gray-500 uppercase tracking-wider">Nhóm</th>
+                <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">SL</th>
+                <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Doanh thu</th>
+                <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Tỷ trọng</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {rows.map((group) => (
+                <React.Fragment key={group.parentProductId}>
+                  <tr className="bg-gray-50/80 dark:bg-gray-800/40">
+                    <td className="px-4 py-3">
+                      <div className="font-semibold text-gray-800 dark:text-gray-100">
+                        {group.parentProductName}
+                      </div>
+                      {group.parentProductCode && (
+                        <div className="text-xs text-gray-400">{group.parentProductCode}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                      {group.categoryName}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-200">
+                      {formatNumber(group.quantity)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatVND(group.revenue)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-brand-600 dark:text-brand-400 font-bold">
+                      {group.revenueShare.toFixed(2)}%
+                    </td>
+                  </tr>
+
+                  {group.childProducts.map((child) => (
+                    <tr key={`${group.parentProductId}-${child.productId}`} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/20">
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-start gap-2 pl-5">
+                          <span className="mt-1.5 h-2 w-2 rounded-full bg-brand-500/70" />
+                          <div>
+                            <div className="font-medium text-gray-700 dark:text-gray-200">
+                              {child.productName}
+                            </div>
+                            {child.productCode && (
+                              <div className="text-xs text-gray-400">{child.productCode}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">
+                        {child.categoryName}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-medium text-gray-700 dark:text-gray-200">
+                        {formatNumber(child.quantity)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                        {formatVND(child.revenue)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-brand-600 dark:text-brand-400 font-bold">
+                        {child.revenueShare.toFixed(2)}%
+                      </td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildParentRows(data: ProductsReportData): ProductSalesGroupItem[] {
+  if (data.productsByParent?.length) return data.productsByParent;
+
+  const sourceItems = [...data.topSellingProducts, ...data.slowMovingProducts];
+  const uniqueItems = Array.from(new Map(sourceItems.map((item) => [item.productId, item])).values());
+
+  const groups = new Map<string, ProductSalesGroupItem>();
+
+  for (const item of uniqueItems) {
+    const parentKey = item.generalProductId ? `gp:${item.generalProductId}` : `name:${inferParentName(item.productName)}`;
+    const existing = groups.get(parentKey);
+    if (!existing) {
+      groups.set(parentKey, {
+        parentProductId: item.generalProductId ?? item.productId,
+        parentProductName: item.generalProductId ? inferParentName(item.productName) : inferParentName(item.productName),
+        parentProductCode: item.productCode,
+        categoryName: item.categoryName,
+        quantity: item.quantity,
+        revenue: item.revenue,
+        revenueShare: item.revenueShare,
+        childProducts: [item],
+      });
+      continue;
+    }
+
+    existing.quantity += item.quantity;
+    existing.revenue += item.revenue;
+    existing.revenueShare += item.revenueShare;
+    existing.childProducts.push(item);
+  }
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      childProducts: group.childProducts.sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue),
+    }))
+    .sort((a, b) => b.revenue - a.revenue);
+}
+
+function inferParentName(productName: string) {
+  return productName
+    .replace(/\s*size\s+[a-z0-9]+$/i, '')
+    .replace(/\s*\([^)]+\)\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function CategoryTable({ rows }: { rows: any[] }) {
