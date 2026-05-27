@@ -31,17 +31,26 @@ const runRefresh = (): Promise<boolean> => {
     } catch {
       return false;
     } finally {
-      // Release on next tick so callers in the same cycle still share it
+      // Keep the promise cached for 2s so concurrent 401s that arrive
+      // slightly later still share the same result instead of spawning
+      // another refresh call (which would invalidate the first one).
       setTimeout(() => {
         refreshPromise = null;
-      }, 0);
+      }, 2000);
     }
   })();
 
   return refreshPromise;
 };
 
+// Guard to ensure handleSessionExpired only runs once across all concurrent
+// requests. Reset when the page reloads (after redirect to /signin).
+let sessionExpiredHandled = false;
+
 const handleSessionExpired = async () => {
+  if (sessionExpiredHandled) return;
+  sessionExpiredHandled = true;
+
   const { useAuthStore } = await import("@/store/authStore");
   useAuthStore.getState().logout();
 
@@ -118,10 +127,14 @@ class FetchClient {
 
       // ----------------------------------------------------------------------
       // 401 handling: refresh token then retry the original request once
+      // This is a FALLBACK for cases where the token was valid when the
+      // interceptor ran but got invalidated server-side mid-flight.
+      // The primary refresh logic lives in the request interceptor below.
       // ----------------------------------------------------------------------
       if (
         response.status === 401 &&
         !finalOptions._retry &&
+        !finalOptions.skipAuth &&
         !endpoint.includes("/auth/refresh") &&
         !endpoint.includes("/auth/login")
       ) {
@@ -208,6 +221,9 @@ export const httpClient = new FetchClient(BASE_URL);
 // Attach access token. If it's already expired, refresh BEFORE sending the
 // request (saves a roundtrip). Uses the same singleton refresh promise as
 // the 401 handler, so concurrent requests share one refresh call.
+//
+// CRITICAL: if the proactive refresh fails here, we throw immediately.
+// There is no point sending a request we know will get 401.
 // ----------------------------------------------------------------------------
 httpClient.addRequestInterceptor(async (options) => {
   if (typeof window !== "undefined" && !options.skipAuth) {
@@ -225,10 +241,26 @@ httpClient.addRequestInterceptor(async (options) => {
       }
 
       if (expired) {
-        const refreshToken = Cookies.get("refreshToken");
-        if (refreshToken) {
-          await runRefresh();
-          token = Cookies.get("token");
+        const refreshTokenValue = Cookies.get("refreshToken");
+        if (refreshTokenValue) {
+          const refreshed = await runRefresh();
+          if (refreshed) {
+            // Re-read token from cookies after successful refresh
+            token = Cookies.get("token");
+          } else {
+            // Refresh failed → session is dead. Throw immediately so
+            // we don't send a request that will just 401 again.
+            await handleSessionExpired();
+            const err: any = new Error("Session expired");
+            err.status = 401;
+            throw err;
+          }
+        } else {
+          // No refresh token available → session expired
+          await handleSessionExpired();
+          const err: any = new Error("Session expired");
+          err.status = 401;
+          throw err;
         }
       }
 

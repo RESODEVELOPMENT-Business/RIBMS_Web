@@ -280,10 +280,71 @@ function ProductTable({ rows, title }: { rows: any[]; title: string }) {
   );
 }
 
+const ChevronIcon = ({ expanded }: { expanded: boolean }) => (
+  <svg
+    className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${
+      expanded ? 'rotate-90 text-brand-500 dark:text-brand-400' : ''
+    }`}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    strokeWidth={2.5}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+const ExpandAllIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    strokeWidth={2}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
+const CollapseAllIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    strokeWidth={2}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+  </svg>
+);
+
 function ParentProductTable({ rows = [] }: { rows?: ProductSalesGroupItem[] }) {
+  const [expandedIds, setExpandedIds] = useState<Record<string | number, boolean>>({});
+
+  const toggleRow = (id: string | number) => {
+    setExpandedIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const allExpanded = rows.length > 0 && rows.every((r) => expandedIds[r.parentProductId]);
+
+  const toggleAll = () => {
+    if (allExpanded) {
+      setExpandedIds({});
+    } else {
+      const nextExpanded: Record<string | number, boolean> = {};
+      rows.forEach((r) => {
+        nextExpanded[r.parentProductId] = true;
+      });
+      setExpandedIds(nextExpanded);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6 space-y-4">
-      <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">
             Gom theo sản phẩm cha
@@ -292,8 +353,27 @@ function ParentProductTable({ rows = [] }: { rows?: ProductSalesGroupItem[] }) {
             Hiển thị tổng hợp theo sản phẩm cha và các SKU con đã phát sinh doanh thu.
           </p>
         </div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-          {rows.length} nhóm
+        <div className="flex items-center gap-3 self-start md:self-auto select-none">
+          <button
+            type="button"
+            onClick={toggleAll}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border border-gray-200 dark:border-gray-800 hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 text-gray-600 dark:text-gray-400 hover:bg-brand-50/50 dark:hover:bg-brand-950/10 flex items-center gap-1.5 active:scale-95 shadow-sm"
+          >
+            {allExpanded ? (
+              <>
+                <CollapseAllIcon className="w-3.5 h-3.5" />
+                Thu gọn tất cả
+              </>
+            ) : (
+              <>
+                <ExpandAllIcon className="w-3.5 h-3.5" />
+                Mở rộng tất cả
+              </>
+            )}
+          </button>
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 bg-gray-100 dark:bg-gray-800/60 px-2.5 py-1.5 rounded-lg">
+            {rows.length} nhóm
+          </div>
         </div>
       </div>
 
@@ -314,62 +394,79 @@ function ParentProductTable({ rows = [] }: { rows?: ProductSalesGroupItem[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {rows.map((group) => (
-                <React.Fragment key={group.parentProductId}>
-                  <tr className="bg-gray-50/80 dark:bg-gray-800/40">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-gray-800 dark:text-gray-100">
-                        {group.parentProductName}
-                      </div>
-                      {group.parentProductCode && (
-                        <div className="text-xs text-gray-400">{group.parentProductCode}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
-                      {group.categoryName}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-200">
-                      {formatNumber(group.quantity)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
-                      {formatVND(group.revenue)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-brand-600 dark:text-brand-400 font-bold">
-                      {group.revenueShare.toFixed(2)}%
-                    </td>
-                  </tr>
-
-                  {group.childProducts.map((child) => (
-                    <tr key={`${group.parentProductId}-${child.productId}`} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/20">
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-start gap-2 pl-5">
-                          <span className="mt-1.5 h-2 w-2 rounded-full bg-brand-500/70" />
+              {rows.map((group) => {
+                const isExpanded = !!expandedIds[group.parentProductId];
+                return (
+                  <React.Fragment key={group.parentProductId}>
+                    <tr
+                      onClick={() => toggleRow(group.parentProductId)}
+                      className="bg-gray-50/80 dark:bg-gray-800/40 cursor-pointer hover:bg-gray-100/50 dark:hover:bg-gray-800/60 transition-colors duration-150 select-none"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="flex-shrink-0 transition-transform duration-200">
+                            <ChevronIcon expanded={isExpanded} />
+                          </span>
                           <div>
-                            <div className="font-medium text-gray-700 dark:text-gray-200">
-                              {child.productName}
+                            <div className="font-semibold text-gray-800 dark:text-gray-100">
+                              {group.parentProductName}
                             </div>
-                            {child.productCode && (
-                              <div className="text-xs text-gray-400">{child.productCode}</div>
+                            {group.parentProductCode && (
+                              <div className="text-xs text-gray-400">{group.parentProductCode}</div>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">
-                        {child.categoryName}
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                        {group.categoryName}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-medium text-gray-700 dark:text-gray-200">
-                        {formatNumber(child.quantity)}
+                      <td className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-200">
+                        {formatNumber(group.quantity)}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-emerald-600 dark:text-emerald-400">
-                        {formatVND(child.revenue)}
+                      <td className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                        {formatVND(group.revenue)}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-brand-600 dark:text-brand-400 font-bold">
-                        {child.revenueShare.toFixed(2)}%
+                      <td className="px-4 py-3 text-right text-brand-600 dark:text-brand-400 font-bold">
+                        {group.revenueShare.toFixed(2)}%
                       </td>
                     </tr>
-                  ))}
-                </React.Fragment>
-              ))}
+
+                    {isExpanded &&
+                      group.childProducts.map((child) => (
+                        <tr
+                          key={`${group.parentProductId}-${child.productId}`}
+                          className="hover:bg-gray-50/60 dark:hover:bg-gray-800/20 transition-colors duration-150 animate-fadeIn"
+                        >
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-start gap-2 pl-5">
+                              <span className="mt-1.5 h-2 w-2 rounded-full bg-brand-500/70" />
+                              <div>
+                                <div className="font-medium text-gray-700 dark:text-gray-200">
+                                  {child.productName}
+                                </div>
+                                {child.productCode && (
+                                  <div className="text-xs text-gray-400">{child.productCode}</div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300">
+                            {child.categoryName}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-medium text-gray-700 dark:text-gray-200">
+                            {formatNumber(child.quantity)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                            {formatVND(child.revenue)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-brand-600 dark:text-brand-400 font-bold">
+                            {child.revenueShare.toFixed(2)}%
+                          </td>
+                        </tr>
+                      ))}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

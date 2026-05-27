@@ -7,8 +7,8 @@ import {
   OperationsReportData,
 } from '@/services/salesDashboard';
 import { TimeIcon, BoltIcon, GridIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, DollarLineIcon, TaskIcon } from '@/icons';
-import DatePicker from '@/components/form/date-picker';
 import ExportExcelButton from '../components/ExportExcelButton';
+import DashboardFilters from '../components/DashboardFilters';
 import { useDashboardFilters } from '../hooks/useDashboardFilters';
 import {
   buildScopeHeaderRows,
@@ -19,13 +19,6 @@ const formatVND = (v: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(v);
 const formatNumber = (v: number) => new Intl.NumberFormat('vi-VN').format(v);
 
-const PRESETS: { label: string; days: number }[] = [
-  { label: 'Hôm nay', days: 0 },
-  { label: '3 ngày qua', days: 3 },
-  { label: '7 ngày qua', days: 7 },
-  { label: '30 ngày qua', days: 30 },
-];
-
 export default function OperationsReportPage() {
   const filters = useDashboardFilters();
   const {
@@ -35,20 +28,10 @@ export default function OperationsReportPage() {
   } = filters;
 
   const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [isCompareMode, setIsCompareMode] = useState(false);
 
   const [data, setData] = useState<OperationsReportData | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    const handleClose = () => setDropdownOpen(false);
-    window.addEventListener('click', handleClose);
-    return () => window.removeEventListener('click', handleClose);
-  }, [dropdownOpen]);
 
   // Disable comparison mode if only 1 store is selected
   useEffect(() => {
@@ -152,36 +135,6 @@ export default function OperationsReportPage() {
     ]);
   };
 
-  const filteredStores = stores.filter((s) => {
-    const name = (s.name || s.storeName || '').toLowerCase();
-    return name.includes(searchTerm.toLowerCase());
-  });
-
-  const dateRange = `${fromDate} to ${toDate}`;
-
-  const handleDateRangeChange = React.useCallback(
-    (selectedDates: Date[], dateStr: string) => {
-      if (dateStr.includes(' to ') || selectedDates.length >= 2) {
-        const parts = dateStr.split(' to ');
-        const from = parts[0];
-        const to = parts[1] || parts[0];
-
-        if (from) setDateRange(from, to || from);
-      }
-    },
-    [setDateRange],
-  );
-
-  const applyPreset = (days: number) => {
-    const today = new Date();
-    const start = new Date();
-    start.setDate(today.getDate() - days);
-    setDateRange(
-      start.toISOString().split('T')[0],
-      today.toISOString().split('T')[0],
-    );
-  };
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 text-gray-800 dark:text-gray-100">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-5">
@@ -196,155 +149,48 @@ export default function OperationsReportPage() {
         <ExportExcelButton onClick={handleExport} disabled={loading || !data} />
       </div>
 
-      {/* Filters Section */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-xl shadow-gray-100/50 dark:shadow-none space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          {/* Store Selection (Multi-select) */}
-          <div className="flex flex-col gap-1.5 relative" onClick={(e) => e.stopPropagation()}>
-            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Cửa Hàng
-            </label>
-            <button
-              type="button"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              disabled={storesLoading}
-              className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none disabled:opacity-50 flex items-center justify-between text-left h-[42px]"
-            >
-              <span className="truncate pr-2">
-                {storesLoading
-                  ? 'Đang tải cửa hàng...'
-                  : selectedStoreIds.length === 0
-                    ? 'Tất cả cửa hàng (Toàn hệ thống)'
-                    : `Đang chọn ${selectedStoreIds.length} cửa hàng`}
-              </span>
-              {dropdownOpen ? (
-                <ChevronUpIcon className="w-4 h-4 text-gray-400" />
-              ) : (
-                <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-              )}
-            </button>
+      <DashboardFilters
+        stores={stores}
+        storesLoading={storesLoading}
+        selectedStoreIds={selectedStoreIds}
+        fromDate={fromDate}
+        toDate={toDate}
+        onStoreIdsChange={setSelectedStoreIds}
+        onDateRangeChange={setDateRange}
+        datePickerId="operations-report-date-range"
+        multiSelect={true}
+      />
 
-            {dropdownOpen && (
-              <div className="absolute top-[100%] left-0 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-50 p-4 space-y-3">
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm cửa hàng..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
-                />
-
-                <div className="flex justify-between items-center text-[11px] font-bold pb-2 border-b border-gray-100 dark:border-gray-800">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStoreIds([])}
-                    className="text-brand-600 dark:text-brand-400 hover:opacity-85 transition-opacity"
-                  >
-                    Chọn tất cả (Toàn hệ thống)
-                  </button>
-                  {selectedStoreIds.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStoreIds([])}
-                      className="text-rose-500 hover:text-rose-600 transition-colors"
-                    >
-                      Bỏ chọn tất cả
-                    </button>
-                  )}
-                </div>
-
-                <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
-                  {filteredStores.map((s) => {
-                    const storeId = s.id || s.storeId;
-                    const storeName = s.name || s.storeName;
-                    const isSelected = selectedStoreIds.includes(storeId);
-                    return (
-                      <label
-                        key={storeId}
-                        className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer select-none text-xs font-medium transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {
-                            if (isSelected) {
-                              setSelectedStoreIds(selectedStoreIds.filter((id) => id !== storeId));
-                            } else {
-                              setSelectedStoreIds([...selectedStoreIds, storeId]);
-                            }
-                          }}
-                          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
-                        />
-                        <span className={isSelected ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-gray-700 dark:text-gray-300'}>
-                          {storeName}
-                        </span>
-                      </label>
-                    );
-                  })}
-                  {filteredStores.length === 0 && (
-                    <div className="text-center py-4 text-xs text-gray-400">Không tìm thấy cửa hàng</div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Date Picker */}
-          <div className="flex flex-col gap-1.5 md:col-span-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Khoảng Thời Gian
-            </label>
-            <DatePicker
-              id="operations-report-date-range"
-              mode="range"
-              defaultDate={dateRange}
-              onChange={handleDateRangeChange}
-            />
-          </div>
+      {/* Sleek Card for Comparison Mode */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Chế độ xem đối chiếu hiệu suất hoạt động
         </div>
-
-        {/* Presets and Comparison Mode Toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-gray-100 dark:border-gray-800/80">
-          <div className="flex flex-wrap gap-2">
-            {PRESETS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => applyPreset(p.days)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Sleek Switch for Comparison Mode */}
-          <div className="flex items-center gap-3 self-start sm:self-center">
-            <label htmlFor="compare-mode-toggle" className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                id="compare-mode-toggle"
-                checked={isCompareMode}
-                onChange={(e) => setIsCompareMode(e.target.checked)}
-                disabled={selectedStoreIds.length === 1 || (data !== null && data.storePerformance.length < 2)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-              <span className="ml-2.5 text-xs font-bold text-gray-600 dark:text-gray-300 select-none">
-                Chế độ so sánh đối chiếu
-              </span>
-            </label>
-            {selectedStoreIds.length === 1 && (
-              <span className="text-[10px] text-amber-500 font-semibold animate-pulse">
-                (Chọn từ 2 cửa hàng hoặc tất cả)
-              </span>
-            )}
-            {data && data.storePerformance.length < 2 && selectedStoreIds.length !== 1 && (
-              <span className="text-[10px] text-amber-500 font-semibold animate-pulse">
-                (Hệ thống chỉ có 1 cửa hàng, không thể so sánh)
-              </span>
-            )}
-          </div>
+        <div className="flex items-center gap-3 self-start sm:self-center">
+          <label htmlFor="compare-mode-toggle" className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              id="compare-mode-toggle"
+              checked={isCompareMode}
+              onChange={(e) => setIsCompareMode(e.target.checked)}
+              disabled={selectedStoreIds.length === 1 || (data !== null && data.storePerformance.length < 2)}
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+            <span className="ml-2.5 text-xs font-bold text-gray-600 dark:text-gray-300 select-none">
+              Chế độ so sánh đối chiếu
+            </span>
+          </label>
+          {selectedStoreIds.length === 1 && (
+            <span className="text-[10px] text-amber-500 font-semibold animate-pulse">
+              (Chọn từ 2 cửa hàng hoặc tất cả)
+            </span>
+          )}
+          {data && data.storePerformance.length < 2 && selectedStoreIds.length !== 1 && (
+            <span className="text-[10px] text-amber-500 font-semibold animate-pulse">
+              (Hệ thống chỉ có 1 cửa hàng, không thể so sánh)
+            </span>
+          )}
         </div>
       </div>
 
@@ -568,7 +414,7 @@ export default function OperationsReportPage() {
                           'from-rose-500 to-pink-500',
                         ];
                         const g = gradients[idx % gradients.length];
-                        
+
                         let timeFrame = '06h-10h';
                         if (s.shiftCode === 'SH02') timeFrame = '10h-14h';
                         if (s.shiftCode === 'SH03') timeFrame = '14h-18h';

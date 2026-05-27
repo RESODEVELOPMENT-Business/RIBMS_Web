@@ -74,6 +74,14 @@ export default function CreatePromotionPage() {
     );
   };
 
+  const toggleAllStores = () => {
+    if (selectedStoreIds.length === stores.length) {
+      setSelectedStoreIds([]);
+    } else {
+      setSelectedStoreIds(stores.map((store) => store.id || store.storeId));
+    }
+  };
+
   const addDetail = () => setDetails((prev) => [...prev, {}]);
   const removeDetail = (index: number) =>
     setDetails((prev) => prev.filter((_, i) => i !== index));
@@ -411,20 +419,112 @@ export default function CreatePromotionPage() {
                         placeholder="e.g. RULE01"
                       />
                     </div>
-                    <div>
-                      <label className={labelCls}>Category (tùy chọn)</label>
-                      <select
-                        className={inputCls}
-                        value={detail.buyProductCode || ''}
-                        onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value || undefined)}
-                      >
-                        <option value="">-- Không áp dụng theo category --</option>
-                        {categories.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.categoryName} (ID: {cat.id})
-                          </option>
-                        ))}
-                      </select>
+                    <div className="md:col-span-2">
+                      <label className={labelCls}>Áp dụng theo</label>
+                      <div className="flex gap-3 mb-2">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name={`matchMode-${idx}`}
+                            checked={!detail.buyProductCode?.toString().startsWith('P:')}
+                            onChange={() => updateDetail(idx, 'buyProductCode', undefined)}
+                            className="w-4 h-4 text-brand-500 focus:ring-brand-500"
+                          />
+                          <span className="text-sm font-medium dark:text-gray-300">Category</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name={`matchMode-${idx}`}
+                            checked={detail.buyProductCode?.toString().startsWith('P:') || false}
+                            onChange={() => updateDetail(idx, 'buyProductCode', 'P:')}
+                            className="w-4 h-4 text-brand-500 focus:ring-brand-500"
+                          />
+                          <span className="text-sm font-medium dark:text-gray-300">Sản phẩm cụ thể</span>
+                        </label>
+                      </div>
+
+                      {detail.buyProductCode?.toString().startsWith('P:') ? (
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            Chọn các sản phẩm cụ thể (ví dụ: tất cả Size S). Tick chọn nhiều sản phẩm bên dưới.
+                          </p>
+                          <input
+                            type="text"
+                            placeholder="🔍 Tìm kiếm sản phẩm..."
+                            className={`${inputCls} mb-2`}
+                            onChange={(e) => {
+                              // Store search term on the detail object temporarily
+                              updateDetail(idx, '_productSearch', e.target.value);
+                            }}
+                            value={(detail as any)._productSearch || ''}
+                          />
+                          <div className="max-h-[200px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                            {products
+                              .filter((prod: any) => {
+                                const search = ((detail as any)._productSearch || '').toLowerCase();
+                                if (!search) return true;
+                                const name = (prod.productName || '').toLowerCase();
+                                const id = String(prod.id || prod.productId);
+                                return name.includes(search) || id.includes(search);
+                              })
+                              .map((prod: any) => {
+                                const prodId = String(prod.id || prod.productId);
+                                const selectedIds = detail.buyProductCode?.toString().startsWith('P:')
+                                  ? detail.buyProductCode.toString().slice(2).split(',').filter(Boolean)
+                                  : [];
+                                const isChecked = selectedIds.includes(prodId);
+                                return (
+                                  <label
+                                    key={prodId}
+                                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all text-sm ${
+                                      isChecked
+                                        ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300 dark:border-brand-700'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        let newIds: string[];
+                                        if (isChecked) {
+                                          newIds = selectedIds.filter((id: string) => id !== prodId);
+                                        } else {
+                                          newIds = [...selectedIds, prodId];
+                                        }
+                                        updateDetail(idx, 'buyProductCode', newIds.length > 0 ? `P:${newIds.join(',')}` : 'P:');
+                                      }}
+                                      className="w-4 h-4 rounded text-brand-500 focus:ring-brand-500"
+                                    />
+                                    <span className={`${isChecked ? 'font-semibold text-brand-700 dark:text-brand-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                      {prod.productName}
+                                    </span>
+                                    <span className="text-xs text-gray-400 ml-auto">ID: {prodId}</span>
+                                  </label>
+                                );
+                              })}
+                          </div>
+                          {detail.buyProductCode && detail.buyProductCode.toString().length > 2 && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 font-medium">
+                              ✓ Đã chọn {detail.buyProductCode.toString().slice(2).split(',').filter(Boolean).length} sản phẩm
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <select
+                          className={inputCls}
+                          value={detail.buyProductCode || ''}
+                          onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value || undefined)}
+                        >
+                          <option value="">-- Không áp dụng theo category --</option>
+                          {categories.map((cat: any) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.categoryName} (ID: {cat.id})
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                     <div>
                       <label className={labelCls}>Giảm giá (%)</label>
@@ -473,6 +573,28 @@ export default function CreatePromotionPage() {
                         onChange={(e) => updateDetail(idx, 'maxOrderAmount', e.target.value ? Number(e.target.value) : undefined)}
                       />
                     </div>
+                    <div>
+                      <label className={labelCls}>Số lượng mua tối thiểu (tùy chọn)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        className={inputCls}
+                        value={detail.minBuyQuantity ?? ''}
+                        onChange={(e) => updateDetail(idx, 'minBuyQuantity', e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="e.g. 1"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Số lượng được giảm tối đa (tùy chọn)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        className={inputCls}
+                        value={detail.maxBuyQuantity ?? ''}
+                        onChange={(e) => updateDetail(idx, 'maxBuyQuantity', e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="e.g. 1"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -482,7 +604,18 @@ export default function CreatePromotionPage() {
 
         {/* ── Section: Store Assignment ── */}
         <div className="p-6 bg-white rounded-xl shadow dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Assign to Stores</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Assign to Stores</h2>
+            {stores.length > 0 && (
+              <button
+                type="button"
+                onClick={toggleAllStores}
+                className="text-sm font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400 transition-colors"
+              >
+                {selectedStoreIds.length === stores.length ? 'Deselect All' : 'Select All'}
+              </button>
+            )}
+          </div>
           {stores.length === 0 ? (
             <p className="text-sm text-gray-400">No stores available.</p>
           ) : (
