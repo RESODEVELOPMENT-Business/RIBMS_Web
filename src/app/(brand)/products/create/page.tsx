@@ -353,9 +353,26 @@ export default function CreateProductPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-3 dark:text-gray-300">
-                  Stores (Select multiple)
-                </label>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium dark:text-gray-300">
+                    Stores (Select multiple)
+                  </label>
+                  {stores.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedStoreIds.length === stores.length) {
+                          setSelectedStoreIds([]);
+                        } else {
+                          setSelectedStoreIds(stores.map((item) => item.id));
+                        }
+                      }}
+                      className="text-xs font-semibold px-2.5 py-1 rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-all duration-200 active:scale-95 cursor-pointer"
+                    >
+                      {selectedStoreIds.length === stores.length ? 'Deselect All / Bỏ chọn tất cả' : 'Select All / Chọn tất cả'}
+                    </button>
+                  )}
+                </div>
 
                 <div className="border rounded-lg p-3 dark:bg-gray-700 dark:border-gray-600 max-h-48 overflow-y-auto">
                   {stores.length === 0 ? (
@@ -369,7 +386,7 @@ export default function CreateProductPage() {
                             id={`store-${item.id}`}
                             checked={selectedStoreIds.includes(item.id)}
                             onChange={() => toggleStoreSelection(item.id)}
-                            className="w-4 h-4 rounded"
+                            className="w-4 h-4 rounded cursor-pointer"
                           />
                           <label
                             htmlFor={`store-${item.id}`}
