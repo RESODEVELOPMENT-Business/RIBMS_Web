@@ -129,8 +129,8 @@ export default function CreatePromotionPage() {
     };
 
     try {
-      await createPromotion(payload);
-      toast.success('Promotion created successfully!');
+      const res = await createPromotion(payload);
+      toast.success(res.message);
       router.push('/promotions');
     } catch (err: any) {
       toast.error(`Error: ${err.message}`);
@@ -199,9 +199,9 @@ export default function CreatePromotionPage() {
             </div>
             <div>
               <label className={labelCls}>Gift Type *</label>
-              <select 
-                required 
-                name="giftType" 
+              <select
+                required
+                name="giftType"
                 className={inputCls}
                 onChange={(e) => setGiftType(Number(e.target.value))}
               >
@@ -241,7 +241,7 @@ export default function CreatePromotionPage() {
               <input name="applyToTime" type="number" min={0} max={23} className={inputCls} placeholder="e.g. 22" />
             </div>
           </div>
-          
+
           {/* Helper text for gift type */}
           {giftType === 1 && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -309,7 +309,7 @@ export default function CreatePromotionPage() {
                       <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">
                         🛍️ Điều kiện mua
                       </h3>
-                      
+
                       <div>
                         <label className={labelCls}>Category mua *</label>
                         <select
@@ -360,19 +360,109 @@ export default function CreatePromotionPage() {
 
                       <div>
                         <label className={labelCls}>Chọn sản phẩm tặng *</label>
-                        <select
-                          required
-                          className={inputCls}
-                          value={detail.giftProductCode || ''}
-                          onChange={(e) => updateDetail(idx, 'giftProductCode', e.target.value || undefined)}
-                        >
-                          <option value="">-- Chọn sản phẩm --</option>
-                          {products.map((prod) => (
-                            <option key={prod.id} value={prod.id}>
-                              {prod.productName} (ID: {prod.id})
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex gap-3 mb-2">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="radio"
+                              name={`giftMatchMode-${idx}`}
+                              checked={!detail.giftProductCode?.toString().startsWith('P:')}
+                              onChange={() => updateDetail(idx, 'giftProductCode', undefined)}
+                              className="w-4 h-4 text-brand-500 focus:ring-brand-500"
+                            />
+                            <span className="text-sm font-medium dark:text-gray-300">Tặng theo Category (bất kì)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="radio"
+                              name={`giftMatchMode-${idx}`}
+                              checked={detail.giftProductCode?.toString().startsWith('P:') || false}
+                              onChange={() => updateDetail(idx, 'giftProductCode', 'P:')}
+                              className="w-4 h-4 text-brand-500 focus:ring-brand-500"
+                            />
+                            <span className="text-sm font-medium dark:text-gray-300">Sản phẩm cụ thể</span>
+                          </label>
+                        </div>
+
+                        {detail.giftProductCode?.toString().startsWith('P:') ? (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                              Chọn sản phẩm tặng cụ thể. Khách hàng sẽ chọn 1 trong các sản phẩm này.
+                            </p>
+                            <input
+                              type="text"
+                              placeholder="🔍 Tìm kiếm sản phẩm tặng..."
+                              className={`${inputCls} mb-2`}
+                              onChange={(e) => {
+                                updateDetail(idx, '_giftProductSearch', e.target.value);
+                              }}
+                              value={(detail as any)._giftProductSearch || ''}
+                            />
+                            <div className="max-h-[200px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                              {products
+                                .filter((prod: any) => {
+                                  const search = ((detail as any)._giftProductSearch || '').toLowerCase();
+                                  if (!search) return true;
+                                  const name = (prod.productName || '').toLowerCase();
+                                  const id = String(prod.id || prod.productId);
+                                  return name.includes(search) || id.includes(search);
+                                })
+                                .map((prod: any) => {
+                                  const prodId = String(prod.id || prod.productId);
+                                  const selectedIds = detail.giftProductCode?.toString().startsWith('P:')
+                                    ? detail.giftProductCode.toString().slice(2).split(',').filter(Boolean)
+                                    : [];
+                                  const isChecked = selectedIds.includes(prodId);
+                                  return (
+                                    <label
+                                      key={prodId}
+                                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all text-sm ${isChecked
+                                          ? 'bg-purple-50 dark:bg-purple-900/20 border border-purple-300 dark:border-purple-700'
+                                          : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                                        }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          let newIds: string[];
+                                          if (isChecked) {
+                                            newIds = selectedIds.filter((id: string) => id !== prodId);
+                                          } else {
+                                            newIds = [...selectedIds, prodId];
+                                          }
+                                          updateDetail(idx, 'giftProductCode', newIds.length > 0 ? `P:${newIds.join(',')}` : 'P:');
+                                        }}
+                                        className="w-4 h-4 rounded text-purple-500 focus:ring-purple-500"
+                                      />
+                                      <span className={`${isChecked ? 'font-semibold text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                        {prod.productName}
+                                      </span>
+                                      <span className="text-xs text-gray-400 ml-auto">ID: {prodId}</span>
+                                    </label>
+                                  );
+                                })}
+                            </div>
+                            {detail.giftProductCode && detail.giftProductCode.toString().length > 2 && (
+                              <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5 font-medium">
+                                🎁 Đã chọn {detail.giftProductCode.toString().slice(2).split(',').filter(Boolean).length} sản phẩm tặng
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <select
+                            required
+                            className={inputCls}
+                            value={detail.giftProductCode || ''}
+                            onChange={(e) => updateDetail(idx, 'giftProductCode', e.target.value || undefined)}
+                          >
+                            <option value="">-- Chọn category tặng --</option>
+                            {categories.map((cat: any) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.categoryName} (ID: {cat.id})
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
 
                       <div>
@@ -477,11 +567,10 @@ export default function CreatePromotionPage() {
                                 return (
                                   <label
                                     key={prodId}
-                                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all text-sm ${
-                                      isChecked
+                                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all text-sm ${isChecked
                                         ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300 dark:border-brand-700'
                                         : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                                    }`}
+                                      }`}
                                   >
                                     <input
                                       type="checkbox"
@@ -626,11 +715,10 @@ export default function CreatePromotionPage() {
                 return (
                   <label
                     key={storeId}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                      isChecked
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isChecked
                         ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 dark:border-brand-500'
                         : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"

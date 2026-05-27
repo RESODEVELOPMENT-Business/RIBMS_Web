@@ -15,6 +15,7 @@ import {
   UpdatePromotionData,
 } from '@/services/promotions';
 import { getProductCategories } from '@/services/productCategories';
+import { getProducts } from '@/services/products';
 
 type TabKey = 'overview' | 'details' | 'stores' | 'vouchers';
 
@@ -27,6 +28,7 @@ export default function PromotionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [editingDetailId, setEditingDetailId] = useState<number | null>(null);
   const [editingDetailData, setEditingDetailData] = useState<any>({});
 
@@ -45,6 +47,7 @@ export default function PromotionDetailPage() {
     if (promotionId) {
       fetchPromotion();
       fetchCategories();
+      fetchProducts();
     }
   }, [promotionId]);
 
@@ -91,6 +94,18 @@ export default function PromotionDetailPage() {
       }
     } catch (err) {
       console.error('Failed to load categories', err);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await getProducts(1, 500);
+      if (res && res.data) {
+        const prods = Array.isArray(res.data) ? res.data : res.data.items || res.data.data || [];
+        setProducts(prods);
+      }
+    } catch (err) {
+      console.error('Failed to load products', err);
     }
   };
 
@@ -153,10 +168,9 @@ export default function PromotionDetailPage() {
   };
 
   const tabClasses = (key: TabKey) =>
-    `px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
-      activeTab === key
-        ? 'bg-brand-500 text-white shadow-sm'
-        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+    `px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === key
+      ? 'bg-brand-500 text-white shadow-sm'
+      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
     }`;
 
   const inputCls = 'w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors';
@@ -194,11 +208,10 @@ export default function PromotionDetailPage() {
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{promo.promotionName}</h1>
           <p className="text-sm text-gray-400 font-mono">{promo.promotionCode}</p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-          promo.active
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-        }`}>
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${promo.active
+          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+          }`}>
           {promo.active ? 'Active' : 'Inactive'}
         </span>
       </div>
@@ -331,91 +344,181 @@ export default function PromotionDetailPage() {
         <div className="space-y-4">
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-900 dark:text-blue-100">
-              <strong>💡 Category-Based Discount:</strong> If <strong>Category</strong> is set, the discount applies per product quantity in that category. Leave empty to apply discount once per order.
+              <strong>💡 Tip:</strong> Click <strong>✎ Edit</strong> on any rule to modify all fields. GiftType: <strong>{GIFT_TYPE_LABELS[promo.giftType] || promo.giftType}</strong>
             </p>
           </div>
           {promo.details && promo.details.length > 0 ? (
             promo.details.map((d: any, i: number) => {
-              const categoryName = categories.find(c => c.id == d.buyProductCode)?.name;
+              const isEditing = editingDetailId === d.promotionDetailId;
+              const isGiftType = promo.giftType === 1;
+              const ed = editingDetailData;
+              const setEd = (field: string, value: any) => setEditingDetailData((prev: any) => ({ ...prev, [field]: value }));
+              const catName = categories.find((c: any) => c.id == d.buyProductCode)?.categoryName;
               return (
                 <div key={d.promotionDetailId} className="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">
                       Rule #{i + 1} — <span className="font-mono text-xs">{d.promotionDetailCode || 'N/A'}</span>
                     </h3>
-                    {editingDetailId !== d.promotionDetailId && (
-                      <button
-                        onClick={() => {
-                          setEditingDetailId(d.promotionDetailId);
-                          setEditingDetailData({ ...d });
-                        }}
-                        className="text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors"
-                      >
-                        ✎ Edit Category
-                      </button>
+                    {!isEditing && (
+                      <button onClick={() => { setEditingDetailId(d.promotionDetailId); setEditingDetailData({ ...d }); }}
+                        className="text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors">✎ Edit</button>
                     )}
                   </div>
-                  
-                  {editingDetailId === d.promotionDetailId ? (
-                    <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+
+                  {isEditing ? (
+                    <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                      {/* BuyProductCode picker */}
                       <div>
-                        <label className="block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">
-                          Select Category (optional)
-                        </label>
-                        <select
-                          value={editingDetailData.buyProductCode || ''}
-                          onChange={(e) =>
-                            setEditingDetailData({
-                              ...editingDetailData,
-                              buyProductCode: e.target.value || null,
-                            })
-                          }
-                          className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors"
-                        >
-                          <option value="">-- No Category (apply once) --</option>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.name} (ID: {cat.id})
-                            </option>
-                          ))}
-                        </select>
+                        <label className={labelCls}>Áp dụng theo (Buy Product)</label>
+                        <div className="flex gap-3 mb-2">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="radio" name={`editBuyMode-${i}`} checked={!ed.buyProductCode?.toString().startsWith('P:')}
+                              onChange={() => setEd('buyProductCode', undefined)} className="w-4 h-4 text-brand-500" />
+                            <span className="text-sm font-medium dark:text-gray-300">Category</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="radio" name={`editBuyMode-${i}`} checked={ed.buyProductCode?.toString().startsWith('P:') || false}
+                              onChange={() => setEd('buyProductCode', 'P:')} className="w-4 h-4 text-brand-500" />
+                            <span className="text-sm font-medium dark:text-gray-300">Sản phẩm cụ thể</span>
+                          </label>
+                        </div>
+                        {ed.buyProductCode?.toString().startsWith('P:') ? (
+                          <div>
+                            <input type="text" placeholder="🔍 Tìm sản phẩm..." className={`${inputCls} mb-2`}
+                              value={ed._buySearch || ''} onChange={(e) => setEd('_buySearch', e.target.value)} />
+                            <div className="max-h-[180px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                              {products.filter((p: any) => { const s = (ed._buySearch||'').toLowerCase(); return !s || (p.productName||'').toLowerCase().includes(s) || String(p.id||p.productId).includes(s); }).map((prod: any) => {
+                                const pid = String(prod.id||prod.productId);
+                                const sids = ed.buyProductCode?.toString().slice(2).split(',').filter(Boolean) || [];
+                                const chk = sids.includes(pid);
+                                return (<label key={pid} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm ${chk ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                                  <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x:string)=>x!==pid) : [...sids,pid]; setEd('buyProductCode', n.length>0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-brand-500" />
+                                  <span className={chk?'font-semibold text-brand-700 dark:text-brand-300':'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
+                                  <span className="text-xs text-gray-400 ml-auto">ID: {pid}</span>
+                                </label>);
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <select className={inputCls} value={ed.buyProductCode||''} onChange={(e) => setEd('buyProductCode', e.target.value||null)}>
+                            <option value="">-- Không áp dụng theo category --</option>
+                            {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.categoryName} (ID: {cat.id})</option>))}
+                          </select>
+                        )}
                       </div>
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => setEditingDetailId(null)}
-                          className="px-3 py-1.5 text-sm border rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={async () => {
-                            try {
-                              await updatePromotionDetail(
-                                d.promotionDetailId,
-                                { buyProductCode: editingDetailData.buyProductCode }
-                              );
-                              toast.success('Category updated!');
-                              setEditingDetailId(null);
-                              fetchPromotion();
-                            } catch (err: any) {
-                              toast.error(`Error: ${err.message}`);
-                            }
-                          }}
-                          className="px-3 py-1.5 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium"
-                        >
-                          Save
-                        </button>
+
+                      {/* GiftProductCode picker (only for GiftType=1) */}
+                      {isGiftType && (
+                        <div>
+                          <label className={labelCls}>Sản phẩm tặng (Gift Product)</label>
+                          <div className="flex gap-3 mb-2">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                              <input type="radio" name={`editGiftMode-${i}`} checked={!ed.giftProductCode?.toString().startsWith('P:')}
+                                onChange={() => setEd('giftProductCode', undefined)} className="w-4 h-4 text-brand-500" />
+                              <span className="text-sm font-medium dark:text-gray-300">Tặng theo Category</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                              <input type="radio" name={`editGiftMode-${i}`} checked={ed.giftProductCode?.toString().startsWith('P:') || false}
+                                onChange={() => setEd('giftProductCode', 'P:')} className="w-4 h-4 text-brand-500" />
+                              <span className="text-sm font-medium dark:text-gray-300">Sản phẩm cụ thể</span>
+                            </label>
+                          </div>
+                          {ed.giftProductCode?.toString().startsWith('P:') ? (
+                            <div>
+                              <input type="text" placeholder="🔍 Tìm sản phẩm tặng..." className={`${inputCls} mb-2`}
+                                value={ed._giftSearch || ''} onChange={(e) => setEd('_giftSearch', e.target.value)} />
+                              <div className="max-h-[180px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                                {products.filter((p: any) => { const s = (ed._giftSearch||'').toLowerCase(); return !s || (p.productName||'').toLowerCase().includes(s) || String(p.id||p.productId).includes(s); }).map((prod: any) => {
+                                  const pid = String(prod.id||prod.productId);
+                                  const sids = ed.giftProductCode?.toString().slice(2).split(',').filter(Boolean) || [];
+                                  const chk = sids.includes(pid);
+                                  return (<label key={pid} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm ${chk ? 'bg-purple-50 dark:bg-purple-900/20 border border-purple-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                                    <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x:string)=>x!==pid) : [...sids,pid]; setEd('giftProductCode', n.length>0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-purple-500" />
+                                    <span className={chk?'font-semibold text-purple-700 dark:text-purple-300':'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
+                                    <span className="text-xs text-gray-400 ml-auto">ID: {pid}</span>
+                                  </label>);
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <select className={inputCls} value={ed.giftProductCode||''} onChange={(e) => setEd('giftProductCode', e.target.value||null)}>
+                              <option value="">-- Chọn category tặng --</option>
+                              {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.categoryName} (ID: {cat.id})</option>))}
+                            </select>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Numeric fields */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {!isGiftType && (<>
+                          <div>
+                            <label className={labelCls}>Giảm giá (%)</label>
+                            <input type="number" step="0.01" min="0" max="100" className={inputCls} value={ed.discountRate??''} onChange={(e) => setEd('discountRate', e.target.value ? Number(e.target.value) : null)} />
+                          </div>
+                          <div>
+                            <label className={labelCls}>Giảm giá (tiền)</label>
+                            <input type="number" step="1000" min="0" className={inputCls} value={ed.discountAmount??''} onChange={(e) => setEd('discountAmount', e.target.value ? Number(e.target.value) : null)} />
+                          </div>
+                        </>)}
+                        <div>
+                          <label className={labelCls}>Giá trị đơn hàng tối thiểu</label>
+                          <input type="number" step="1000" min="0" className={inputCls} value={ed.minOrderAmount??''} onChange={(e) => setEd('minOrderAmount', e.target.value ? Number(e.target.value) : null)} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Giá trị đơn hàng tối đa</label>
+                          <input type="number" step="1000" min="0" className={inputCls} value={ed.maxOrderAmount??''} onChange={(e) => setEd('maxOrderAmount', e.target.value ? Number(e.target.value) : null)} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Số lượng mua tối thiểu</label>
+                          <input type="number" min="1" className={inputCls} value={ed.minBuyQuantity??''} onChange={(e) => setEd('minBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Số lượng được giảm tối đa</label>
+                          <input type="number" min="1" className={inputCls} value={ed.maxBuyQuantity??''} onChange={(e) => setEd('maxBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
+                        </div>
+                        {isGiftType && (
+                          <div>
+                            <label className={labelCls}>Số lượng tặng</label>
+                            <input type="number" min="1" className={inputCls} value={ed.giftQuantity??''} onChange={(e) => setEd('giftQuantity', e.target.value ? Number(e.target.value) : null)} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Save/Cancel */}
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button onClick={() => setEditingDetailId(null)} className="px-4 py-2 text-sm border rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button onClick={async () => {
+                          try {
+                            const payload: any = {};
+                            if (ed.buyProductCode !== d.buyProductCode) payload.buyProductCode = ed.buyProductCode || '';
+                            if (ed.giftProductCode !== d.giftProductCode) payload.giftProductCode = ed.giftProductCode || '';
+                            if (ed.discountRate !== d.discountRate) payload.discountRate = ed.discountRate;
+                            if (ed.discountAmount !== d.discountAmount) payload.discountAmount = ed.discountAmount;
+                            if (ed.minOrderAmount !== d.minOrderAmount) payload.minOrderAmount = ed.minOrderAmount;
+                            if (ed.maxOrderAmount !== d.maxOrderAmount) payload.maxOrderAmount = ed.maxOrderAmount;
+                            if (ed.minBuyQuantity !== d.minBuyQuantity) payload.minBuyQuantity = ed.minBuyQuantity;
+                            if (ed.maxBuyQuantity !== d.maxBuyQuantity) payload.maxBuyQuantity = ed.maxBuyQuantity;
+                            if (ed.giftQuantity !== d.giftQuantity) payload.giftQuantity = ed.giftQuantity;
+                            await updatePromotionDetail(d.promotionDetailId, payload);
+                            toast.success('Detail rule updated!');
+                            setEditingDetailId(null);
+                            fetchPromotion();
+                          } catch (err: any) { toast.error(`Error: ${err.message}`); }
+                        }} className="px-5 py-2 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium">Save Changes</button>
                       </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                      <InfoRow label="Min Order" value={d.minOrderAmount != null ? `${d.minOrderAmount.toLocaleString()}₫` : '—'} />
-                      <InfoRow label="Max Order" value={d.maxOrderAmount != null ? `${d.maxOrderAmount.toLocaleString()}₫` : '—'} />
+                      <InfoRow label="Buy Product" value={d.buyProductCode?.toString().startsWith('P:') ? `SP: ${d.buyProductCode.slice(2)}` : catName ? `${catName} (${d.buyProductCode})` : d.buyProductCode || '—'} />
+                      <InfoRow label="Min Buy Qty" value={d.minBuyQuantity ?? '—'} />
+                      <InfoRow label="Max Buy Qty" value={d.maxBuyQuantity ?? '—'} />
                       <InfoRow label="Discount Rate" value={d.discountRate != null ? `${d.discountRate}%` : '—'} />
                       <InfoRow label="Discount Amount" value={d.discountAmount != null ? `${Number(d.discountAmount).toLocaleString()}₫` : '—'} />
-                      <InfoRow label="Category" value={categoryName ? `${categoryName} (${d.buyProductCode})` : '—'} />
-                      <InfoRow label="Min Buy Qty" value={d.minBuyQuantity ?? '—'} />
-                      <InfoRow label="Gift Product" value={d.giftProductCode || '—'} />
+                      <InfoRow label="Min Order" value={d.minOrderAmount != null ? `${d.minOrderAmount.toLocaleString()}₫` : '—'} />
+                      <InfoRow label="Max Order" value={d.maxOrderAmount != null ? `${d.maxOrderAmount.toLocaleString()}₫` : '—'} />
+                      <InfoRow label="Gift Product" value={d.giftProductCode?.toString().startsWith('P:') ? `SP: ${d.giftProductCode.slice(2)}` : d.giftProductCode ? `Cat ${d.giftProductCode}` : '—'} />
                       <InfoRow label="Gift Qty" value={d.giftQuantity ?? '—'} />
                     </div>
                   )}
@@ -423,9 +526,7 @@ export default function PromotionDetailPage() {
               );
             })
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 text-center text-gray-400">
-              No detail rules configured.
-            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 text-center text-gray-400">No detail rules configured.</div>
           )}
         </div>
       )}
