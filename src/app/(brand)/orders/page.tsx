@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { getStores } from '@/services/stores';
 import { getOrders, OrderItem, OrderDetail } from '@/services/orders';
+import { getPaymentTypesByBrand, PaymentType } from '@/services/paymentTypes';
 import { Modal } from '@/components/ui/modal';
 import DatePicker from '@/components/form/date-picker';
 import {
@@ -63,7 +64,12 @@ export default function OrdersPage() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<number | ''>('');
   const [typeFilter, setTypeFilter] = useState<number | ''>('');
+  const [paymentFilter, setPaymentFilter] = useState<number | ''>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Payment Types for filter
+  const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
+  const [paymentTypesLoading, setPaymentTypesLoading] = useState<boolean>(false);
 
   // Date filters (defaults: from 7 days ago to today)
   const [fromDate, setFromDate] = useState<string>(() => {
@@ -130,6 +136,27 @@ export default function OrdersPage() {
     fetchStores();
   }, []);
 
+  // Fetch payment types for filter
+  useEffect(() => {
+    const fetchPaymentTypes = async () => {
+      setPaymentTypesLoading(true);
+      try {
+        const res = await getPaymentTypesByBrand(1, 100);
+        if (res && res.data) {
+          setPaymentTypes(res.data.items || res.data);
+        } else {
+          setPaymentTypes([]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch payment types:', err);
+        toast.error('Không thể tải danh sách phương thức thanh toán');
+      } finally {
+        setPaymentTypesLoading(false);
+      }
+    };
+    fetchPaymentTypes();
+  }, []);
+
   // Fetch orders when filters change
   useEffect(() => {
     if (selectedStoreId) {
@@ -166,7 +193,7 @@ export default function OrdersPage() {
     }
   };
 
-  // Local filtering by search term (Invoice ID) and type filter
+  // Local filtering by search term (Invoice ID), type filter and payment filter
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const matchesSearch = searchTerm
@@ -174,9 +201,12 @@ export default function OrdersPage() {
         order.orderId?.toString().includes(searchTerm)
         : true;
       const matchesType = typeFilter !== '' ? order.orderType === Number(typeFilter) : true;
-      return matchesSearch && matchesType;
+      const matchesPayment = paymentFilter !== ''
+        ? order.payments?.some((p: any) => Number(p.type) === Number(paymentFilter))
+        : true;
+      return matchesSearch && matchesType && matchesPayment;
     });
-  }, [orders, searchTerm, typeFilter]);
+  }, [orders, searchTerm, typeFilter, paymentFilter]);
 
   const handleViewDetail = (order: OrderItem) => {
     setSelectedOrder(order);
@@ -197,7 +227,7 @@ export default function OrdersPage() {
 
       {/* ── Filters Section ──────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-xl shadow-gray-100/50 dark:shadow-none space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {/* Store Selector */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
@@ -267,6 +297,33 @@ export default function OrdersPage() {
                   {config.text}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Payment Filter */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Thanh Toán
+            </label>
+            <select
+              value={paymentFilter}
+              onChange={(e) => {
+                setPaymentFilter(e.target.value !== '' ? Number(e.target.value) : '');
+              }}
+              disabled={paymentTypesLoading}
+              className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none disabled:opacity-50"
+            >
+              <option value="">
+                {paymentTypesLoading ? 'Đang tải...' : 'Tất cả thanh toán'}
+              </option>
+              {paymentTypes.map((pt) => {
+                const ptId = pt.id ?? pt.paymentTypeId;
+                return (
+                  <option key={ptId} value={ptId}>
+                    {pt.name || `Loại ${ptId}`}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
