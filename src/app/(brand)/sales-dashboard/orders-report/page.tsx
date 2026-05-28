@@ -380,22 +380,29 @@ function HourlyChart({ hourlyDistribution, shiftDistribution, maxHourlyRevenue, 
 
         {/* Bars */}
         <div className="ml-16">
-          <div className="flex items-end gap-[12px] min-w-[600px]" style={{ height: '220px' }}>
+          <div className="flex items-end gap-[12px] min-w-[600px]" style={{ height: '300px' }}>
             {dataItems.map((h) => {
               const ratio = maxHourlyRevenue > 0 ? (h.revenue / maxHourlyRevenue) * 100 : 0;
               const isPeak = h.revenue === peak.revenue && h.revenue > 0;
               const isHighTraffic = ratio >= 60;
               const isHovered = hovered === h.id;
+              const widthGrow = Math.max(h.revenue, 1);
               return (
                 <div
                   key={h.id}
-                  className="flex-1 flex flex-col items-center justify-end h-full relative min-w-[80px] cursor-pointer"
+                  className="flex flex-col items-center justify-end h-full relative cursor-pointer"
+                  style={{ flexGrow: widthGrow, flexBasis: 0, minWidth: '72px' }}
                   onMouseEnter={() => setHovered(h.id)}
                   onMouseLeave={() => setHovered(null)}
                 >
-                  {/* Value label */}
-                  <div className={`text-[10px] font-medium text-gray-600 dark:text-gray-300 mb-1 whitespace-nowrap transition-opacity duration-150 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-                    {h.revenue > 0 ? `${(h.revenue / 1000).toFixed(0)}k` : ''}
+                  {/* Always-visible value labels above the bar */}
+                  <div className="flex flex-col items-center mb-1 leading-tight">
+                    <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                      {h.revenue > 0 ? `${(h.revenue / 1000).toFixed(0)}k` : '—'}
+                    </div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      🧾 {formatNumber(h.invoiceCount)} • ☕ {formatNumber(h.itemCount)}
+                    </div>
                   </div>
 
                   {/* Bar */}
