@@ -348,6 +348,7 @@ export default function OrdersPage() {
                   <th className="px-4 py-3.5 text-left font-semibold border-r border-[#009045]">Mã Hóa Đơn</th>
                   <th className="px-4 py-3.5 text-center font-semibold border-r border-[#009045]">Loại Đơn</th>
                   <th className="px-4 py-3.5 text-center font-semibold border-r border-[#009045]">Trạng Thái</th>
+                  <th className="px-4 py-3.5 text-left font-semibold border-r border-[#009045]">Thanh Toán</th>
                   <th className="px-4 py-3.5 text-left font-semibold border-r border-[#009045]">Thời Gian Đặt</th>
                   <th className="px-4 py-3.5 text-center font-semibold border-r border-[#009045]">Số Sản Phẩm</th>
                   <th className="px-4 py-3.5 text-right font-semibold border-r border-[#009045]">Tổng Cộng</th>
@@ -378,6 +379,11 @@ export default function OrdersPage() {
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${statusConf.badgeClass}`}>
                           {statusConf.text}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-left border-r dark:border-gray-800 text-gray-700 dark:text-gray-300 font-medium">
+                        {order.payments && order.payments.length > 0
+                          ? order.payments.map((p: any) => p.name || `Loại ${p.type}`).join(', ')
+                          : 'Chưa thanh toán'}
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400 border-r dark:border-gray-800">
                         {formatDate(order.checkInDate)}
@@ -458,7 +464,7 @@ export default function OrdersPage() {
             </div>
 
             {/* Main Info Blocks */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/80 rounded-xl p-3.5 flex flex-col gap-1">
                 <span className="text-2xs font-bold text-gray-400 uppercase tracking-wide">Trạng Thái</span>
                 <span className={`inline-flex self-start items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_MAPPINGS[selectedOrder.orderStatus]?.badgeClass}`}>
@@ -470,6 +476,15 @@ export default function OrdersPage() {
                 <span className="text-2xs font-bold text-gray-400 uppercase tracking-wide">Loại Hình</span>
                 <span className={`inline-flex self-start items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${ORDER_TYPE_MAPPINGS[selectedOrder.orderType]?.badgeClass}`}>
                   {ORDER_TYPE_MAPPINGS[selectedOrder.orderType]?.text || 'Khác'}
+                </span>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/80 rounded-xl p-3.5 flex flex-col gap-1">
+                <span className="text-2xs font-bold text-gray-400 uppercase tracking-wide">Thanh Toán</span>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                  {selectedOrder.payments && selectedOrder.payments.length > 0
+                    ? selectedOrder.payments.map((p: any) => p.name || `Loại ${p.type}`).join(', ')
+                    : 'Chưa thanh toán'}
                 </span>
               </div>
 

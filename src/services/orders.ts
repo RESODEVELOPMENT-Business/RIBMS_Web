@@ -12,6 +12,7 @@ export interface OrderDetail {
 
 export interface OrderPayment {
   type: number;
+  name?: string;
 }
 
 export interface OrderItem {

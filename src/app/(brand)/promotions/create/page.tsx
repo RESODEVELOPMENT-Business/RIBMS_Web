@@ -118,8 +118,8 @@ export default function CreatePromotionPage() {
       storeIds: selectedStoreIds,
       details: details.map((d) => {
         const detail: CreatePromotionDetailData = { ...d };
-        // Convert giftProductCode to number if it exists
-        if (detail.giftProductCode && selectedGiftType === 1) {
+        // Convert giftProductCode to number if it exists and is a category (not product list starting with P:)
+        if (detail.giftProductCode && selectedGiftType === 1 && !detail.giftProductCode.toString().startsWith('P:')) {
           detail.giftProductCode = String(Number(detail.giftProductCode));
         }
         return detail;
@@ -311,20 +311,110 @@ export default function CreatePromotionPage() {
                       </h3>
 
                       <div>
-                        <label className={labelCls}>Category mua *</label>
-                        <select
-                          required
-                          className={inputCls}
-                          value={detail.buyProductCode || ''}
-                          onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value || undefined)}
-                        >
-                          <option value="">-- Chọn category --</option>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.categoryName} (ID: {cat.id})
-                            </option>
-                          ))}
-                        </select>
+                        <label className={labelCls}>Chọn điều kiện mua *</label>
+                        <div className="flex gap-3 mb-2">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="radio"
+                              name={`buyMatchMode-${idx}`}
+                              checked={!detail.buyProductCode?.toString().startsWith('P:')}
+                              onChange={() => updateDetail(idx, 'buyProductCode', undefined)}
+                              className="w-4 h-4 text-brand-500 focus:ring-brand-500"
+                            />
+                            <span className="text-sm font-medium dark:text-gray-300">Category</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="radio"
+                              name={`buyMatchMode-${idx}`}
+                              checked={detail.buyProductCode?.toString().startsWith('P:') || false}
+                              onChange={() => updateDetail(idx, 'buyProductCode', 'P:')}
+                              className="w-4 h-4 text-brand-500 focus:ring-brand-500"
+                            />
+                            <span className="text-sm font-medium dark:text-gray-300">Sản phẩm cụ thể</span>
+                          </label>
+                        </div>
+
+                        {detail.buyProductCode?.toString().startsWith('P:') ? (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                              Chọn sản phẩm mua cụ thể. Tick chọn nhiều sản phẩm bên dưới.
+                            </p>
+                            <input
+                              type="text"
+                              placeholder="🔍 Tìm kiếm sản phẩm mua..."
+                              className={`${inputCls} mb-2`}
+                              onChange={(e) => {
+                                updateDetail(idx, '_buyProductSearch', e.target.value);
+                              }}
+                              value={(detail as any)._buyProductSearch || ''}
+                            />
+                            <div className="max-h-[200px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                              {products
+                                .filter((prod: any) => {
+                                  const search = ((detail as any)._buyProductSearch || '').toLowerCase();
+                                  if (!search) return true;
+                                  const name = (prod.productName || '').toLowerCase();
+                                  const id = String(prod.id || prod.productId);
+                                  return name.includes(search) || id.includes(search);
+                                })
+                                .map((prod: any) => {
+                                  const prodId = String(prod.id || prod.productId);
+                                  const selectedIds = detail.buyProductCode?.toString().startsWith('P:')
+                                    ? detail.buyProductCode.toString().slice(2).split(',').filter(Boolean)
+                                    : [];
+                                  const isChecked = selectedIds.includes(prodId);
+                                  return (
+                                    <label
+                                      key={prodId}
+                                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all text-sm ${isChecked
+                                          ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300 dark:border-brand-700'
+                                          : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                                        }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          let newIds: string[];
+                                          if (isChecked) {
+                                            newIds = selectedIds.filter((id: string) => id !== prodId);
+                                          } else {
+                                            newIds = [...selectedIds, prodId];
+                                          }
+                                          updateDetail(idx, 'buyProductCode', newIds.length > 0 ? `P:${newIds.join(',')}` : 'P:');
+                                        }}
+                                        className="w-4 h-4 rounded text-brand-500 focus:ring-brand-500"
+                                      />
+                                      <span className={`${isChecked ? 'font-semibold text-brand-700 dark:text-brand-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                        {prod.productName}
+                                      </span>
+                                      <span className="text-xs text-gray-400 ml-auto">ID: {prodId}</span>
+                                    </label>
+                                  );
+                                })}
+                            </div>
+                            {detail.buyProductCode && detail.buyProductCode.toString().length > 2 && (
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 font-medium">
+                                ✓ Đã chọn {detail.buyProductCode.toString().slice(2).split(',').filter(Boolean).length} sản phẩm mua
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <select
+                            required
+                            className={inputCls}
+                            value={detail.buyProductCode || ''}
+                            onChange={(e) => updateDetail(idx, 'buyProductCode', e.target.value || undefined)}
+                          >
+                            <option value="">-- Chọn category --</option>
+                            {categories.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.categoryName} (ID: {cat.id})
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
 
                       <div>
