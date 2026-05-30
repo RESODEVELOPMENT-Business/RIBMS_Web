@@ -2,7 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { getProductById, getProducts, updateProduct } from '@/services/products';
+import {
+  getProductById,
+  getProducts,
+  updateProduct,
+  getProductDetailMappings,
+  updateProductDetailMapping,
+} from '@/services/products';
 import { getProductCategories } from '@/services/productCategories';
 import { Product, ProductCategory, ProductTypeEnum, PRODUCT_TYPE_OPTIONS } from '@/types/product';
 
@@ -164,6 +170,26 @@ export default function EditProductPage() {
         return;
       }
       await updateProduct(Number(productId), payload);
+
+      // Cascade price change to all product detail mappings
+      const oldPrice = Number(product?.price);
+      if (price !== oldPrice) {
+        try {
+          const res = await getProductDetailMappings(1, 500, undefined, Number(productId));
+          const mappings = res?.data?.items || res?.data || [];
+          await Promise.all(
+            mappings.map((m: any) =>
+              updateProductDetailMapping(m.productDetailId, {
+                Price: price,
+              })
+            )
+          );
+        } catch (mappingErr: any) {
+          console.error('Error updating product detail mappings:', mappingErr);
+          toast.error(`Product updated but failed to sync store mappings: ${mappingErr.message}`);
+        }
+      }
+
       toast.success('Product updated successfully!');
       router.push('/products');
     } catch (err: any) {

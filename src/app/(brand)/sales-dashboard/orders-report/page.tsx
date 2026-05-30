@@ -309,6 +309,11 @@ function HourlyChart({ hourlyDistribution, shiftDistribution, maxHourlyRevenue, 
       }))
     : hourlyDistribution.map(h => ({ id: h.hour, label: `${h.hour}`, revenue: h.revenue, invoiceCount: h.invoiceCount, itemCount: h.itemCount }));
 
+  const maxActiveRevenue = useMemo(() => {
+    const maxVal = dataItems.reduce((max, h) => Math.max(max, h.revenue), 0);
+    return maxVal > 0 ? maxVal : 1;
+  }, [dataItems]);
+
   const hoveredData = hovered !== null
     ? dataItems.find(d => d.id === hovered) ?? null
     : null;
@@ -318,6 +323,10 @@ function HourlyChart({ hourlyDistribution, shiftDistribution, maxHourlyRevenue, 
   const activeHours = dataItems.filter(h => h.invoiceCount > 0).length;
   const totalRevenue = dataItems.reduce((s, h) => s + h.revenue, 0);
   const avgRevenuePerHour = activeHours > 0 ? totalRevenue / activeHours : 0;
+
+  const barWidthStyles = usingShifts
+    ? { width: '150px', flexShrink: 0 }
+    : { flex: '1 1 0%', minWidth: '16px', maxWidth: '32px' };
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
@@ -371,7 +380,7 @@ function HourlyChart({ hourlyDistribution, shiftDistribution, maxHourlyRevenue, 
           {[100, 75, 50, 25, 0].map((pct) => (
             <div key={pct} className="flex items-center w-full">
               <span className="text-[10px] text-gray-300 dark:text-gray-600 w-14 text-right pr-2 shrink-0">
-                {formatNumber(Math.round((maxHourlyRevenue * pct) / 100))}
+                {formatNumber(Math.round((maxActiveRevenue * pct) / 100))}
               </span>
               <div className="flex-1 border-t border-dashed border-gray-100 dark:border-gray-800" />
             </div>
@@ -380,42 +389,73 @@ function HourlyChart({ hourlyDistribution, shiftDistribution, maxHourlyRevenue, 
 
         {/* Bars */}
         <div className="ml-16">
-          <div className="flex items-end gap-[12px] min-w-[600px]" style={{ height: '300px' }}>
+          <div
+            className={`flex items-end min-w-[600px] h-[300px] ${
+              usingShifts ? 'justify-center gap-8 px-4' : 'justify-between gap-[6px]'
+            }`}
+          >
             {dataItems.map((h) => {
-              const ratio = maxHourlyRevenue > 0 ? (h.revenue / maxHourlyRevenue) * 100 : 0;
+              const ratio = maxActiveRevenue > 0 ? (h.revenue / maxActiveRevenue) * 100 : 0;
               const isPeak = h.revenue === peak.revenue && h.revenue > 0;
               const isHighTraffic = ratio >= 60;
               const isHovered = hovered === h.id;
-              const widthGrow = Math.max(h.revenue, 1);
               return (
                 <div
                   key={h.id}
                   className="flex flex-col items-center justify-end h-full relative cursor-pointer"
-                  style={{ flexGrow: widthGrow, flexBasis: 0, minWidth: '72px' }}
+                  style={barWidthStyles}
                   onMouseEnter={() => setHovered(h.id)}
                   onMouseLeave={() => setHovered(null)}
                 >
-                  {/* Always-visible value labels above the bar */}
-                  <div className="flex flex-col items-center mb-1 leading-tight">
-                    <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                      {h.revenue > 0 ? `${(h.revenue / 1000).toFixed(0)}k` : '—'}
+                  {/* For narrow columns, show value above bar if height permits */}
+                  {!usingShifts && h.revenue > 0 && (
+                    <div className="flex flex-col items-center mb-1 leading-tight select-none pointer-events-none">
+                      <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        {h.revenue > 0 ? `${(h.revenue / 1000).toFixed(0)}k` : '—'}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      🧾 {formatNumber(h.invoiceCount)} • ☕ {formatNumber(h.itemCount)}
+                  )}
+
+                  {/* For wide columns (shifts), show text above bar only if the bar is too short */}
+                  {usingShifts && h.revenue > 0 && ratio <= 25 && (
+                    <div className="flex flex-col items-center mb-1 leading-tight text-center select-none pointer-events-none">
+                      <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        {formatVND(h.revenue)}
+                      </div>
+                      <div className="text-[9px] text-gray-500 dark:text-gray-400 whitespace-nowrap mt-0.5">
+                        🧾 {formatNumber(h.invoiceCount)} • ☕ {formatNumber(h.itemCount)}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Bar */}
                   <div
-                    className={`w-full rounded-t-md transition-all duration-200
+                    className={`w-full rounded-t-2xl transition-all duration-300 relative flex flex-col justify-center items-center overflow-hidden
                       ${isPeak
-                        ? 'bg-gradient-to-t from-amber-500 to-amber-300 shadow-sm shadow-amber-200/50'
+                        ? 'bg-gradient-to-t from-amber-500 via-orange-500 to-yellow-400 shadow-md shadow-orange-500/10'
                         : isHighTraffic
-                          ? 'bg-gradient-to-t from-brand-600 to-indigo-400'
-                          : 'bg-gradient-to-t from-brand-500/80 to-indigo-400/60'}
-                      ${isHovered ? 'opacity-100 scale-x-105 shadow-md' : ''}`}
-                    style={{ height: `${Math.max(ratio, h.revenue > 0 ? 8 : 0)}%` }}
-                  />
+                          ? 'bg-gradient-to-t from-brand-600 via-indigo-600 to-indigo-500 shadow-md shadow-brand-600/10'
+                          : 'bg-gradient-to-t from-brand-500 via-indigo-500 to-indigo-400/80'}
+                      ${isHovered ? 'scale-x-[1.03] scale-y-[1.01] -translate-y-1 shadow-lg shadow-indigo-500/20' : ''}
+                      ${isHovered && isPeak ? 'shadow-xl shadow-amber-500/30' : ''}`}
+                    style={{ height: `${Math.max(ratio, h.revenue > 0 ? (usingShifts ? 25 : 8) : 0)}%` }}
+                  >
+                    {/* Centered labels inside wide columns (shifts) */}
+                    {usingShifts && h.revenue > 0 && ratio > 25 && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 text-white pointer-events-none select-none z-10">
+                        <div className="text-[12px] font-black tracking-wide drop-shadow-[0_1.5px_1.5px_rgba(0,0,0,0.4)]">
+                          {formatVND(h.revenue)}
+                        </div>
+                        <div className="w-8 h-[1px] bg-white/30 my-1.5" />
+                        <div className="text-[10px] font-medium opacity-90 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">
+                          🧾 {formatNumber(h.invoiceCount)} bill
+                        </div>
+                        <div className="text-[10px] font-medium opacity-90 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)] mt-0.5">
+                          ☕ {formatNumber(h.itemCount)} món
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* X-axis label */}
                   <div className={`text-[12px] mt-2 font-medium text-center transition-colors

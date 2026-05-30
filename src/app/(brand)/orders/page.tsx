@@ -1,21 +1,24 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { getStores } from '@/services/stores';
-import { getOrders, OrderItem, OrderDetail } from '@/services/orders';
+import { getOrders, updateOrder, OrderItem } from '@/services/orders';
 import { getPaymentTypesByBrand, PaymentType } from '@/services/paymentTypes';
 import { Modal } from '@/components/ui/modal';
 import DatePicker from '@/components/form/date-picker';
 import {
-  CalenderIcon,
-  TimeIcon,
-  CheckCircleIcon,
-  DollarLineIcon,
   TaskIcon,
   GridIcon
 } from '@/icons';
+
+type BrandStore = {
+  id?: number;
+  storeId?: number;
+  name?: string;
+  storeName?: string;
+};
 
 const STATUS_MAPPINGS: Record<number, { text: string; badgeClass: string }> = {
   8: { text: 'Mới', badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' },
@@ -56,8 +59,18 @@ const formatDate = (dateStr: string) => {
   });
 };
 
+const getErrorMessage = (err: unknown, fallback: string) => {
+  return err instanceof Error ? err.message : fallback;
+};
+
+const formatPaymentNames = (order: OrderItem) => {
+  return order.payments && order.payments.length > 0
+    ? order.payments.map((payment) => payment.name || `Loại ${payment.type}`).join(', ')
+    : 'Chưa thanh toán';
+};
+
 export default function OrdersPage() {
-  const [stores, setStores] = useState<any[]>([]);
+  const [stores, setStores] = useState<BrandStore[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<number | ''>('');
   const [storesLoading, setStoresLoading] = useState<boolean>(true);
 
@@ -94,6 +107,9 @@ export default function OrdersPage() {
   // Selected Order for Detail View
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
+  const [selectedStatus, setSelectedStatus] = useState<number | ''>('');
+  const [selectedPaymentType, setSelectedPaymentType] = useState<number | ''>('');
+  const [isSavingOrder, setIsSavingOrder] = useState<boolean>(false);
 
   const dateRange = `${fromDate} to ${toDate}`;
 
@@ -158,13 +174,7 @@ export default function OrdersPage() {
   }, []);
 
   // Fetch orders when filters change
-  useEffect(() => {
-    if (selectedStoreId) {
-      fetchOrdersList();
-    }
-  }, [selectedStoreId, page, size, statusFilter, fromDate, toDate]);
-
-  const fetchOrdersList = async () => {
+  const fetchOrdersList = useCallback(async () => {
     setOrdersLoading(true);
     try {
       const res = await getOrders(
@@ -184,14 +194,20 @@ export default function OrdersPage() {
         setTotalPages(1);
         setTotalItems(0);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch orders:', err);
-      toast.error(err.message || 'Không thể tải danh sách đơn hàng');
+      toast.error(getErrorMessage(err, 'Không thể tải danh sách đơn hàng'));
       setOrders([]);
     } finally {
       setOrdersLoading(false);
     }
-  };
+  }, [selectedStoreId, page, size, statusFilter, fromDate, toDate]);
+
+  useEffect(() => {
+    if (selectedStoreId) {
+      void fetchOrdersList();
+    }
+  }, [selectedStoreId, fetchOrdersList]);
 
   // Local filtering by search term (Invoice ID), type filter and payment filter
   const filteredOrders = useMemo(() => {
@@ -202,7 +218,7 @@ export default function OrdersPage() {
         : true;
       const matchesType = typeFilter !== '' ? order.orderType === Number(typeFilter) : true;
       const matchesPayment = paymentFilter !== ''
-        ? order.payments?.some((p: any) => Number(p.type) === Number(paymentFilter))
+        ? order.payments?.some((payment) => Number(payment.type) === Number(paymentFilter))
         : true;
       return matchesSearch && matchesType && matchesPayment;
     });
@@ -210,7 +226,31 @@ export default function OrdersPage() {
 
   const handleViewDetail = (order: OrderItem) => {
     setSelectedOrder(order);
+    setSelectedStatus(order.orderStatus);
+    setSelectedPaymentType(order.payments?.[0]?.type ?? '');
     setIsDetailOpen(true);
+  };
+
+  const handleUpdateOrder = async () => {
+    if (!selectedOrder) return;
+
+    setIsSavingOrder(true);
+    try {
+      await updateOrder(selectedOrder.orderId, {
+        status: selectedStatus !== '' ? Number(selectedStatus) : null,
+        paymentType: selectedPaymentType !== '' ? Number(selectedPaymentType) : null,
+      });
+
+      toast.success('Đã cập nhật đơn hàng thành công');
+      setIsDetailOpen(false);
+      setSelectedOrder(null);
+      await fetchOrdersList();
+    } catch (err: unknown) {
+      console.error('Failed to update order:', err);
+      toast.error(getErrorMessage(err, 'Không thể cập nhật đơn hàng'));
+    } finally {
+      setIsSavingOrder(false);
+    }
   };
 
   return (
@@ -438,9 +478,7 @@ export default function OrdersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-left border-r dark:border-gray-800 text-gray-700 dark:text-gray-300 font-medium">
-                        {order.payments && order.payments.length > 0
-                          ? order.payments.map((p: any) => p.name || `Loại ${p.type}`).join(', ')
-                          : 'Chưa thanh toán'}
+                        {formatPaymentNames(order)}
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400 border-r dark:border-gray-800">
                         {formatDate(order.checkInDate)}
@@ -539,9 +577,7 @@ export default function OrdersPage() {
               <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/80 rounded-xl p-3.5 flex flex-col gap-1">
                 <span className="text-2xs font-bold text-gray-400 uppercase tracking-wide">Thanh Toán</span>
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 truncate">
-                  {selectedOrder.payments && selectedOrder.payments.length > 0
-                    ? selectedOrder.payments.map((p: any) => p.name || `Loại ${p.type}`).join(', ')
-                    : 'Chưa thanh toán'}
+                  {formatPaymentNames(selectedOrder)}
                 </span>
               </div>
 
@@ -550,6 +586,51 @@ export default function OrdersPage() {
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                   {selectedOrder.notes || '(Không ghi chú)'}
                 </span>
+              </div>
+            </div>
+
+            {/* Update Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/80 rounded-xl p-4 space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Cập Nhật Trạng Thái
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : '')}
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none"
+                >
+                  {Object.entries(STATUS_MAPPINGS).map(([code, config]) => (
+                    <option key={code} value={code}>
+                      {config.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/80 rounded-xl p-4 space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Phương Thức Thanh Toán
+                </label>
+                <select
+                  value={selectedPaymentType}
+                  onChange={(e) => setSelectedPaymentType(e.target.value !== '' ? Number(e.target.value) : '')}
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none"
+                  disabled={paymentTypesLoading}
+                >
+                  <option value="">-- Chọn phương thức thanh toán --</option>
+                  {paymentTypes.map((paymentType) => {
+                    const paymentTypeId = paymentType.id ?? paymentType.paymentTypeId;
+                    return (
+                      <option key={paymentTypeId} value={paymentTypeId}>
+                        {paymentType.name || `Loại ${paymentTypeId}`}
+                      </option>
+                    );
+                  })}
+                </select>
+                {paymentTypesLoading && (
+                  <p className="text-xs text-gray-400">Đang tải danh sách phương thức thanh toán...</p>
+                )}
               </div>
             </div>
 
@@ -609,12 +690,21 @@ export default function OrdersPage() {
 
             {/* Close action */}
             <div className="flex justify-end pt-3 border-t border-gray-100 dark:border-gray-800">
-              <button
-                onClick={() => setIsDetailOpen(false)}
-                className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl px-5 py-2.5 text-xs transition-all"
-              >
-                Đóng
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsDetailOpen(false)}
+                  className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl px-5 py-2.5 text-xs transition-all"
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={handleUpdateOrder}
+                  disabled={isSavingOrder || selectedStatus === ''}
+                  className="bg-[#00a651] hover:bg-[#008d46] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl px-5 py-2.5 text-xs transition-all"
+                >
+                  {isSavingOrder ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
             </div>
           </div>
         )}
