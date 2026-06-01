@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { getPromotionsByBrand, PROMOTION_TYPE_LABELS, GIFT_TYPE_LABELS } from '@/services/promotions';
 import { DataTable } from '@/components/ui/data-table';
@@ -10,24 +10,30 @@ import { PencilIcon } from '@/icons';
 export default function PromotionListPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async (pageNum = page, pageSize = size) => {
     setLoading(true);
     try {
-      const res = await getPromotionsByBrand(1, 100);
+      const res = await getPromotionsByBrand(pageNum, pageSize);
       if (res && res.data) {
         setData(res.data.items || res.data);
+        setTotalPages(res.data.totalPages || 1);
+        setTotalItems(res.data.total || (res.data.items || res.data).length || 0);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, size]);
+
+  useEffect(() => {
+    fetchData(page, size);
+  }, [fetchData, page, size]);
 
   const columns = useMemo<ColumnDef<any>[]>(() => [
     {
@@ -143,6 +149,17 @@ export default function PromotionListPage() {
             data={data}
             searchKey="promotionName"
             searchPlaceholder="Search by promotion name..."
+            paginationMode="server"
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={size}
+            onPageChange={setPage}
+            onPageSizeChange={(nextSize) => {
+              setSize(nextSize);
+              setPage(1);
+            }}
+            defaultPageSize={size}
           />
         )}
       </div>

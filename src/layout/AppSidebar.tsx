@@ -55,6 +55,7 @@ const AppSidebar: React.FC = () => {
               { name: "Báo cáo đơn hàng", path: "/sales-dashboard/orders-report" },
               { name: "Báo cáo sản phẩm", path: "/sales-dashboard/products-report" },
               { name: "Báo cáo lợi nhuận", path: "/sales-dashboard/profit-report" },
+              { name: "Báo cáo tình hình lợi nhuận", path: "/sales-dashboard/profit-forecast" },
               { name: "Vận hành cửa hàng", path: "/sales-dashboard/operations-report" },
               { name: "Khách hàng & Marketing", path: "/sales-dashboard/customer-marketing-report" },
               { name: "Doanh thu cửa hàng", path: "/sales-dashboard/top-store-revenues" },
@@ -77,6 +78,7 @@ const AppSidebar: React.FC = () => {
             subItems: [
               { name: "Cửa hàng", path: "/stores" },
               { name: "Phương thức thanh toán", path: "/payment-types" },
+              { name: "Danh mục chi phí", path: "/cost-categories" },
             ],
           },
         ];

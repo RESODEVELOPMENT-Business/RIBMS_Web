@@ -4,7 +4,9 @@ import type { NextRequest } from 'next/server'
 function decodeToken(token: string): any | null {
   try {
     const payloadBase64 = token.split('.')[1];
-    const decodedJson = Buffer.from(payloadBase64, 'base64').toString();
+    const normalized = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const decodedJson = atob(padded);
     return JSON.parse(decodedJson);
   } catch {
     return null;

@@ -173,14 +173,13 @@ export default function OrdersPage() {
     fetchPaymentTypes();
   }, []);
 
-  // Fetch orders when filters change
-  const fetchOrdersList = useCallback(async () => {
+  const loadOrders = useCallback(async (pageNum: number, pageSize: number) => {
     setOrdersLoading(true);
     try {
       const res = await getOrders(
         Number(selectedStoreId),
-        page,
-        size,
+        pageNum,
+        pageSize,
         statusFilter !== '' ? Number(statusFilter) : null,
         fromDate ? `${fromDate}T00:00:00` : null,
         toDate ? `${toDate}T23:59:59` : null
@@ -201,13 +200,13 @@ export default function OrdersPage() {
     } finally {
       setOrdersLoading(false);
     }
-  }, [selectedStoreId, page, size, statusFilter, fromDate, toDate]);
+  }, [selectedStoreId, statusFilter, fromDate, toDate]);
 
   useEffect(() => {
     if (selectedStoreId) {
-      void fetchOrdersList();
+      void loadOrders(page, size);
     }
-  }, [selectedStoreId, fetchOrdersList]);
+  }, [selectedStoreId, page, size, loadOrders]);
 
   // Local filtering by search term (Invoice ID), type filter and payment filter
   const filteredOrders = useMemo(() => {
@@ -244,7 +243,7 @@ export default function OrdersPage() {
       toast.success('Đã cập nhật đơn hàng thành công');
       setIsDetailOpen(false);
       setSelectedOrder(null);
-      await fetchOrdersList();
+      await loadOrders(page, size);
     } catch (err: unknown) {
       console.error('Failed to update order:', err);
       toast.error(getErrorMessage(err, 'Không thể cập nhật đơn hàng'));
@@ -398,8 +397,12 @@ export default function OrdersPage() {
             <select
               value={size}
               onChange={(e) => {
-                setSize(Number(e.target.value));
+                const nextSize = Number(e.target.value);
+                setSize(nextSize);
                 setPage(1);
+                if (selectedStoreId) {
+                  void loadOrders(1, nextSize);
+                }
               }}
               className="border border-gray-300 dark:border-gray-700 rounded-lg px-2 py-1 outline-none focus:border-brand-500 dark:bg-gray-800"
             >
@@ -520,14 +523,22 @@ export default function OrdersPage() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                onClick={() => {
+                  const nextPage = Math.max(page - 1, 1);
+                  setPage(nextPage);
+                  void loadOrders(nextPage, size);
+                }}
                 disabled={page === 1}
                 className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg px-3.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Trang Trước
               </button>
               <button
-                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                onClick={() => {
+                  const nextPage = Math.min(page + 1, totalPages);
+                  setPage(nextPage);
+                  void loadOrders(nextPage, size);
+                }}
                 disabled={page === totalPages}
                 className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg px-3.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >

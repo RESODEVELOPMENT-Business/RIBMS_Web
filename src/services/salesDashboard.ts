@@ -323,6 +323,25 @@ export interface CostCategoryBreakdownItem {
 
 export type ComparisonMode = 'Auto' | 'DoD' | 'WoW' | 'MoM' | 'YoY';
 
+export interface ProfitForecastData {
+  periodNetSales: number;
+  periodDays: number;
+  avgSalesPerDay: number;
+  daysInMonth: number;
+  projectedMonthlySales: number;
+  projectedWeeklySales: number;
+  fixedCostMonthly: number;
+  percentCostMonthly: number;
+  projectedCogsMonthly: number;
+  projectedCostMonthly: number;
+  projectedProfitMonthly: number;
+  projectedProfitWeekly: number;
+  currentCostTotal: number;
+  profitToDate: number;
+  cogsRatioPercent: number;
+  costBreakdown: CostCategoryBreakdownItem[];
+}
+
 // ── API ──────────────────────────────────────────────────────────
 
 const buildScopedQuery = (
@@ -441,4 +460,14 @@ export const getProfitReport = async (
 ) => {
   const qs = buildScopedQuery(storeId, brandId, fromDate, toDate, { top });
   return await apiClient(`/orders/dashboard/profit-report?${qs}`);
+};
+
+export const getProfitForecast = async (
+  storeId?: number | null,
+  brandId?: number | null,
+  fromDate?: string,
+  toDate?: string,
+) => {
+  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
+  return await apiClient(`/orders/dashboard/profit-forecast?${qs}`);
 };

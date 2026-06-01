@@ -13,6 +13,10 @@ import { ProductDetailMapping } from '@/types/product';
 export default function ProductDetailMappingListPage() {
   const [data, setData] = useState<ProductDetailMapping[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [filters, setFilters] = useState({
     search: '',
     storeId: '',
@@ -20,16 +24,16 @@ export default function ProductDetailMappingListPage() {
   });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(filters, page, size);
+  }, [page, size]);
 
-  const fetchData = async (filterValues = filters) => {
+  const fetchData = async (filterValues = filters, pageNum = page, pageSize = size) => {
     try {
       const brandId = useAuthStore.getState().user?.brandId;
       
       const res = await getProductDetailMappings(
-        1, 
-        100, 
+        pageNum,
+        pageSize,
         brandId || undefined,
         undefined, // productId - removed since we're using search
         filterValues.storeId ? Number(filterValues.storeId) : undefined,
@@ -37,6 +41,8 @@ export default function ProductDetailMappingListPage() {
       );
       
       let filteredData = res.data?.items || res.data || [];
+      setTotalPages(res.data?.totalPages || 1);
+      setTotalItems(res.data?.total || filteredData.length || 0);
       
       // Client-side search by product name
       if (filterValues.search) {
@@ -56,7 +62,8 @@ export default function ProductDetailMappingListPage() {
   const handleFilterChange = (key: string, value: string) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
-    fetchData(newFilters);
+    setPage(1);
+    fetchData(newFilters, 1, size);
   };
 
   const columns = useMemo<ColumnDef<ProductDetailMapping>[]>(() => [
@@ -220,6 +227,17 @@ export default function ProductDetailMappingListPage() {
             data={data} 
             searchKey="productName" 
             searchPlaceholder="Search by product or store name..." 
+            paginationMode="server"
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={size}
+            onPageChange={setPage}
+            onPageSizeChange={(nextSize) => {
+              setSize(nextSize);
+              setPage(1);
+            }}
+            defaultPageSize={size}
           />
         )}
       </div>

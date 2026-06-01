@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { getProducts, deleteProduct } from '@/services/products';
 import { useAuthStore } from '@/store/authStore';
@@ -17,24 +17,30 @@ const PRODUCT_TYPE_MAP: Record<number, string> = Object.fromEntries(
 export default function ProductListPage() {
   const [data, setData] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async (pageNum = page, pageSize = size) => {
     setLoading(true);
     try {
-      const res = await getProducts(1, 200);
+      const res = await getProducts(pageNum, pageSize);
       if (res && res.data) {
         setData(res.data.items || res.data);
+        setTotalPages(res.data.totalPages || 1);
+        setTotalItems(res.data.total || (res.data.items || res.data).length || 0);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, size]);
+
+  useEffect(() => {
+    fetchData(page, size);
+  }, [fetchData, page, size]);
 
   const columns = useMemo<ColumnDef<Product>[]>(() => [
     {
@@ -159,6 +165,17 @@ export default function ProductListPage() {
             data={data}
             searchKey="productName"
             searchPlaceholder="Search product by name..."
+            paginationMode="server"
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={size}
+            onPageChange={setPage}
+            onPageSizeChange={(nextSize) => {
+              setSize(nextSize);
+              setPage(1);
+            }}
+            defaultPageSize={size}
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
@@ -12,17 +12,19 @@ import { deletePaymentType, getPaymentTypes } from '@/services/paymentTypes';
 export default function PaymentTypesPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async (pageNum = page, pageSize = size) => {
     setLoading(true);
     try {
-      const res = await getPaymentTypes(1, 100);
+      const res = await getPaymentTypes(pageNum, pageSize);
       if (res && res.data) {
         setData(res.data.items || res.data);
+        setTotalPages(res.data.totalPages || 1);
+        setTotalItems(res.data.total || (res.data.items || res.data).length || 0);
       }
     } catch (err) {
       console.error(err);
@@ -30,7 +32,11 @@ export default function PaymentTypesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, size]);
+
+  useEffect(() => {
+    fetchData(page, size);
+  }, [fetchData, page, size]);
 
   const columns = useMemo<ColumnDef<any>[]>(() => [
     {
@@ -124,7 +130,23 @@ export default function PaymentTypesPage() {
         {loading ? (
           <SkeletonTable columns={6} rows={8} />
         ) : (
-          <DataTable columns={columns} data={data} searchKey="name" searchPlaceholder="Search by name..." />
+          <DataTable
+            columns={columns}
+            data={data}
+            searchKey="name"
+            searchPlaceholder="Search by name..."
+            paginationMode="server"
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={size}
+            onPageChange={setPage}
+            onPageSizeChange={(nextSize) => {
+              setSize(nextSize);
+              setPage(1);
+            }}
+            defaultPageSize={size}
+          />
         )}
       </div>
     </div>
