@@ -79,9 +79,11 @@ export default function BrandListPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Brands Management</h1>
-        <Link href="/brands/create" className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium text-sm">
-          + Create Brand
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/brands/create" className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium text-sm">
+            + Create Brand
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow dark:bg-gray-800 p-6">

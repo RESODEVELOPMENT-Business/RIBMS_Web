@@ -37,6 +37,11 @@ const AppSidebar: React.FC = () => {
             name: "Brands",
             path: "/brands",
           },
+          {
+            icon: <PlugInIcon />,
+            name: "Updates",
+            path: "/updates",
+          },
         ];
 
       case "BrandManager":
@@ -82,6 +87,11 @@ const AppSidebar: React.FC = () => {
             icon: <GridIcon />,
             name: "POS",
             path: "/pos",
+          },
+          {
+            icon: <PieChartIcon />,
+            name: "Kết Ca",
+            path: "/store/shift-sales",
           },
           {
             icon: <PieChartIcon />,
