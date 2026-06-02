@@ -324,21 +324,27 @@ export interface CostCategoryBreakdownItem {
 export type ComparisonMode = 'Auto' | 'DoD' | 'WoW' | 'MoM' | 'YoY';
 
 export interface ProfitForecastData {
-  periodNetSales: number;
-  periodDays: number;
-  avgSalesPerDay: number;
+  // Mốc thời gian (luôn là tháng hiện tại)
+  monthStart: string;
+  asOfDate: string;
+  elapsedDays: number;
   daysInMonth: number;
+  // Thực tế (đầu tháng → hiện tại)
+  monthToDateNetSales: number;
+  avgSalesPerDay: number;
+  monthToDateCogs: number;
+  monthToDateOperatingCost: number;
+  profitToDate: number;
+  cogsRatioPercent: number;
+  // Dự kiến cuối tháng
   projectedMonthlySales: number;
   projectedWeeklySales: number;
-  fixedCostMonthly: number;
-  percentCostMonthly: number;
-  projectedCogsMonthly: number;
+  materialCostRate: number;
+  projectedMaterialCost: number;
+  projectedOperatingCost: number;
   projectedCostMonthly: number;
   projectedProfitMonthly: number;
   projectedProfitWeekly: number;
-  currentCostTotal: number;
-  profitToDate: number;
-  cogsRatioPercent: number;
   costBreakdown: CostCategoryBreakdownItem[];
 }
 
@@ -470,4 +476,56 @@ export const getProfitForecast = async (
 ) => {
   const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
   return await apiClient(`/orders/dashboard/profit-forecast?${qs}`);
+};
+
+// ── Daily operations report ──────────────────────────────────────
+
+export interface DailyPaymentTypeColumn {
+  paymentTypeId: number;
+  name: string;
+  total: number;
+}
+
+export interface DailyOperationRow {
+  date: string;
+  dayOfWeek: number;
+  dayLabel: string;
+  slot6To10: number;
+  slot10To14: number;
+  slot14To18: number;
+  slot18To22: number;
+  /** Aligned with DailyOperationsReportData.paymentTypes order. */
+  paymentAmounts: number[];
+  discount: number;
+  netSales: number;
+  billCount: number;
+  averageBill: number;
+}
+
+export interface DailyOperationsReportData {
+  fromDate: string;
+  toDate: string;
+  grossSales: number;
+  totalDiscount: number;
+  netSales: number;
+  totalBills: number;
+  averageBill: number;
+  profitToDate: number;
+  projectedMonthlyProfit: number;
+  slot6To10: number;
+  slot10To14: number;
+  slot14To18: number;
+  slot18To22: number;
+  paymentTypes: DailyPaymentTypeColumn[];
+  rows: DailyOperationRow[];
+}
+
+export const getDailyOperationsReport = async (
+  storeId?: number | null,
+  brandId?: number | null,
+  fromDate?: string,
+  toDate?: string,
+) => {
+  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
+  return await apiClient(`/orders/dashboard/daily-operations-report?${qs}`);
 };

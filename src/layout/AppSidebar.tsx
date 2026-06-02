@@ -57,6 +57,7 @@ const AppSidebar: React.FC = () => {
               { name: "Báo cáo lợi nhuận", path: "/sales-dashboard/profit-report" },
               { name: "Báo cáo tình hình lợi nhuận", path: "/sales-dashboard/profit-forecast" },
               { name: "Vận hành cửa hàng", path: "/sales-dashboard/operations-report" },
+              { name: "Vận hành theo ngày", path: "/sales-dashboard/daily-operations" },
               { name: "Khách hàng & Marketing", path: "/sales-dashboard/customer-marketing-report" },
               { name: "Doanh thu cửa hàng", path: "/sales-dashboard/top-store-revenues" },
               { name: "Doanh thu theo thanh toán", path: "/sales-dashboard/store-payment-methods" },

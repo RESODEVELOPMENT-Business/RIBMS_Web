@@ -17,6 +17,8 @@ export interface DashboardFiltersProps {
   /** unique id used by flatpickr (multiple pages can mount the same filter). */
   datePickerId: string;
   multiSelect?: boolean;
+  /** Hide the date-range picker + presets (for reports that always use the current month). */
+  hideDateRange?: boolean;
 }
 
 const PRESETS = [
@@ -39,6 +41,7 @@ export default function DashboardFilters({
   onDateRangeChange,
   datePickerId,
   multiSelect = false,
+  hideDateRange = false,
 }: DashboardFiltersProps) {
   const dateRange = `${fromDate} to ${toDate}`;
 
@@ -215,31 +218,35 @@ export default function DashboardFilters({
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5 md:col-span-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-            Khoảng Thời Gian
-          </label>
-          <DatePicker
-            id={datePickerId}
-            mode="range"
-            defaultDate={dateRange}
-            onChange={handleDateRangeChange}
-          />
-        </div>
+        {!hideDateRange && (
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Khoảng Thời Gian
+            </label>
+            <DatePicker
+              id={datePickerId}
+              mode="range"
+              defaultDate={dateRange}
+              onChange={handleDateRangeChange}
+            />
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 dark:border-gray-800/80">
-        {PRESETS.map((p) => (
-          <button
-            key={p.label}
-            type="button"
-            onClick={() => applyPreset(p)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      {!hideDateRange && (
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 dark:border-gray-800/80">
+          {PRESETS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => applyPreset(p)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
