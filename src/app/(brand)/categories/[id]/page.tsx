@@ -52,6 +52,26 @@ export default function CategoryDetailPage() {
               {category.active ? 'Active' : 'Inactive'}
             </span>
           </p>
+          {category.picUrl && (
+            <div className="pt-2">
+              <span className="text-gray-500 dark:text-gray-400 font-medium block mb-2">Category Image:</span>
+              <img 
+                src={category.picUrl} 
+                alt={category.cateName || 'Category Image'} 
+                className="max-w-xs h-auto rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
+              />
+            </div>
+          )}
+          {category.bannerUrl && (
+            <div className="pt-2">
+              <span className="text-gray-500 dark:text-gray-400 font-medium block mb-2">Banner Image:</span>
+              <img 
+                src={category.bannerUrl} 
+                alt="Banner Image" 
+                className="max-w-md h-auto rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
+              />
+            </div>
+          )}
         </div>
       ) : (
         <p className="text-red-500">Category not found</p>

@@ -16,17 +16,19 @@ export const getProductCategoryById = async (id: string, brandId?: number) => {
   return await apiClient(endpoint);
 };
 
-export const createProductCategory = async (data: any) => {
+export const createProductCategory = async (data: any | FormData) => {
+  const isFormData = data instanceof FormData;
   return await apiClient('/product-categories', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: isFormData ? data : JSON.stringify(data),
   });
 };
 
-export const updateProductCategory = async (id: number, data: any) => {
+export const updateProductCategory = async (id: number, data: any | FormData) => {
+  const isFormData = data instanceof FormData;
   return await apiClient(`/product-categories/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: isFormData ? data : JSON.stringify(data),
   });
 };
 

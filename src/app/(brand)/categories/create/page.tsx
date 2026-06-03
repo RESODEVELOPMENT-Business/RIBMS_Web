@@ -39,67 +39,96 @@ export default function CreateCategoryPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    const payload = new FormData();
 
-    const payload = {
-      CateName: formData.get('CateName') as string,
-      CateNameEng: formData.get('CateNameEng') as string,
+    payload.append('CateName', formData.get('CateName') as string);
+    if (formData.get('CateNameEng')) {
+      payload.append('CateNameEng', formData.get('CateNameEng') as string);
+    }
 
-      Type: Number(formData.get('Type')),
+    payload.append('Type', Number(formData.get('Type')).toString());
 
-      IsDisplayed: formData.get('IsDisplayed') === 'on',
-      IsDisplayedWebsite: formData.get('IsDisplayedWebsite') === 'on',
-      IsExtra: formData.get('IsExtra') === 'on',
+    payload.append('IsDisplayed', formData.get('IsDisplayed') === 'on' ? 'true' : 'false');
+    payload.append('IsDisplayedWebsite', formData.get('IsDisplayedWebsite') === 'on' ? 'true' : 'false');
+    payload.append('IsExtra', formData.get('IsExtra') === 'on' ? 'true' : 'false');
 
-      DisplayOrder: Number(formData.get('DisplayOrder') || 0),
+    payload.append('DisplayOrder', Number(formData.get('DisplayOrder') || 0).toString());
 
-      AdjustmentNote: formData.get('AdjustmentNote') as string,
+    if (formData.get('AdjustmentNote')) {
+      payload.append('AdjustmentNote', formData.get('AdjustmentNote') as string);
+    }
 
-      StoreId: formData.get('StoreId')
-        ? Number(formData.get('StoreId'))
-        : null,
+    const storeId = formData.get('StoreId');
+    if (storeId) {
+      payload.append('StoreId', Number(storeId).toString());
+    }
 
-      SeoName: formData.get('SeoName') as string,
-      SeoKeyword: formData.get('SeoKeyword') as string,
-      SeoDescription: formData.get('SeoDescription') as string,
+    if (formData.get('SeoName')) {
+      payload.append('SeoName', formData.get('SeoName') as string);
+    }
+    if (formData.get('SeoKeyword')) {
+      payload.append('SeoKeyword', formData.get('SeoKeyword') as string);
+    }
+    if (formData.get('SeoDescription')) {
+      payload.append('SeoDescription', formData.get('SeoDescription') as string);
+    }
 
-      ImageFontAwsomeCss: formData.get('ImageFontAwsomeCss') as string,
+    if (formData.get('ImageFontAwsomeCss')) {
+      payload.append('ImageFontAwsomeCss', formData.get('ImageFontAwsomeCss') as string);
+    }
 
-      ParentCateId: formData.get('ParentCateId')
-        ? Number(formData.get('ParentCateId'))
-        : null,
+    const parentCateId = formData.get('ParentCateId');
+    if (parentCateId) {
+      payload.append('ParentCateId', Number(parentCateId).toString());
+    }
 
-      Position: formData.get('Position')
-        ? Number(formData.get('Position'))
-        : null,
+    const position = formData.get('Position');
+    if (position) {
+      payload.append('Position', Number(position).toString());
+    }
 
-      Active: formData.get('Active') === 'on',
+    payload.append('Active', formData.get('Active') === 'on' ? 'true' : 'false');
 
-      BrandId: useAuthStore.getState().user?.brandId,
+    const brandId = useAuthStore.getState().user?.brandId;
+    if (brandId) {
+      payload.append('BrandId', brandId.toString());
+    }
 
-      PicUrl: formData.get('PicUrl') as string,
-      BannerUrl: formData.get('BannerUrl') as string,
+    if (formData.get('Description')) {
+      payload.append('Description', formData.get('Description') as string);
+    }
+    if (formData.get('DescriptionEng')) {
+      payload.append('DescriptionEng', formData.get('DescriptionEng') as string);
+    }
 
-      Description: formData.get('Description') as string,
-      DescriptionEng: formData.get('DescriptionEng') as string,
+    if (formData.get('BannerDescription')) {
+      payload.append('BannerDescription', formData.get('BannerDescription') as string);
+    }
+    if (formData.get('BannerDescriptionEng')) {
+      payload.append('BannerDescriptionEng', formData.get('BannerDescriptionEng') as string);
+    }
 
-      BannerDescription: formData.get('BannerDescription') as string,
-      BannerDescriptionEng: formData.get('BannerDescriptionEng') as string,
+    for (let i = 1; i <= 10; i++) {
+      const attVal = formData.get(`Att${i}`);
+      if (attVal) {
+        payload.append(`Att${i}`, attVal as string);
+      }
+    }
 
-      Att1: formData.get('Att1') as string,
-      Att2: formData.get('Att2') as string,
-      Att3: formData.get('Att3') as string,
-      Att4: formData.get('Att4') as string,
-      Att5: formData.get('Att5') as string,
-      Att6: formData.get('Att6') as string,
-      Att7: formData.get('Att7') as string,
-      Att8: formData.get('Att8') as string,
-      Att9: formData.get('Att9') as string,
-      Att10: formData.get('Att10') as string,
+    const vat = formData.get('Vat');
+    if (vat) {
+      payload.append('Vat', Number(vat).toString());
+    }
 
-      Vat: formData.get('Vat')
-        ? Number(formData.get('Vat'))
-        : null,
-    };
+    const imageFile = formData.get('imageFile') as File;
+    if (imageFile && imageFile.size > 0) {
+      payload.append('imageFile', imageFile);
+    }
+
+    const bannerFile = formData.get('bannerFile') as File;
+    if (bannerFile && bannerFile.size > 0) {
+      payload.append('bannerFile', bannerFile);
+    }
 
     try {
       await createProductCategory(payload);
@@ -235,15 +264,29 @@ export default function CreateCategoryPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              <Input
-                label="Picture URL"
-                name="PicUrl"
-              />
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-300">
+                  Category Image
+                </label>
+                <input
+                  type="file"
+                  name="imageFile"
+                  accept="image/*"
+                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+              </div>
 
-              <Input
-                label="Banner URL"
-                name="BannerUrl"
-              />
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-300">
+                  Banner Image
+                </label>
+                <input
+                  type="file"
+                  name="bannerFile"
+                  accept="image/*"
+                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+              </div>
 
             </div>
           </div>
