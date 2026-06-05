@@ -48,18 +48,22 @@ export default function EditProductPage() {
   const [submitting, setSubmitting] = useState(false);
   const [productType, setProductType] = useState<number>(0);
   const [selectedCatId, setSelectedCatId] = useState<string>('');
+  const [extraProducts, setExtraProducts] = useState<Product[]>([]);
+  const [selectedExtraCodes, setSelectedExtraCodes] = useState<string[]>([]);
 
   useEffect(() => {
     if (!productId) return;
     fetchProduct();
     fetchParentProducts();
     fetchCategories();
+    fetchExtraProducts();
   }, [productId]);
 
   useEffect(() => {
     if (!product) return;
     const cid = resolveCatId(product, categories);
     if (cid !== undefined) setSelectedCatId(String(cid));
+    if (product.extraProductCodes) setSelectedExtraCodes(product.extraProductCodes);
   }, [product, categories]);
 
   const fetchProduct = async () => {
@@ -101,6 +105,27 @@ export default function EditProductPage() {
       console.error('Error fetching parent products:', error);
       toast.error('Failed to load parent products');
     }
+  };
+
+  const fetchExtraProducts = async () => {
+    try {
+      const res = await getProducts(1, 500);
+      const products: Product[] = res?.data?.items || res?.data || [];
+      setExtraProducts(
+        products.filter((item) => Number(item.productType) === ProductTypeEnum.Extra)
+      );
+    } catch (error) {
+      console.error('Error fetching extra products:', error);
+      toast.error('Failed to load extra products');
+    }
+  };
+
+  const toggleExtraSelection = (code: string) => {
+    setSelectedExtraCodes((prev) =>
+      prev.includes(code)
+        ? prev.filter((c) => c !== code)
+        : [...prev, code]
+    );
   };
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -152,6 +177,14 @@ export default function EditProductPage() {
 
     if (selectedProductType === ProductTypeEnum.Detail && selectedGeneralProductId) {
       payload.append("generalProductId", String(selectedGeneralProductId));
+    }
+
+    if (selectedExtraCodes.length > 0) {
+      selectedExtraCodes.forEach((code) => {
+        payload.append("ExtraProductCodes", code);
+      });
+    } else {
+      payload.append("ExtraProductCodes", "");
     }
 
     payload.append("active", formData.get("active") === "on" ? "true" : "false");
@@ -382,6 +415,31 @@ export default function EditProductPage() {
               ))}
             </select>
           </div>
+
+          {productType !== ProductTypeEnum.Extra && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-2 dark:text-gray-300">Toppings / Extras (Sản phẩm kèm)</label>
+              {extraProducts.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">Không có sản phẩm kèm nào khả dụng / No extras available</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 border rounded p-4 dark:bg-gray-700 dark:border-gray-600 max-h-48 overflow-y-auto">
+                  {extraProducts.map((extra) => (
+                    <label key={`extra-${extra.id}`} className="flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={selectedExtraCodes.includes(extra.code)}
+                        onChange={() => toggleExtraSelection(extra.code)}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                      <span className="text-sm dark:text-gray-300">
+                        {extra.productName} ({extra.price.toLocaleString()}đ)
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="md:col-span-2 flex items-center gap-2 mt-2">
             <input
               type="checkbox"

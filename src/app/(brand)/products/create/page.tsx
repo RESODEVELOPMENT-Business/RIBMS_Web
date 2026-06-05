@@ -65,11 +65,14 @@ export default function CreateProductPage() {
   const [loading, setLoading] = useState(false);
   const [productType, setProductType] = useState<number>(0);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+  const [extraProducts, setExtraProducts] = useState<Product[]>([]);
+  const [selectedExtraCodes, setSelectedExtraCodes] = useState<string[]>([]);
 
   useEffect(() => {
     fetchCategories();
     fetchParentProducts();
     fetchStores();
+    fetchExtraProducts();
   }, []);
 
   const handleSetCategories = (cats: ProductCategory[]) => {
@@ -105,6 +108,19 @@ export default function CreateProductPage() {
     }
   };
 
+  const fetchExtraProducts = async () => {
+    try {
+      const res = await getProducts(1, 500);
+      const products: Product[] = res?.data?.items || res?.data || [];
+      setExtraProducts(
+        products.filter((item) => Number(item.productType) === ProductTypeEnum.Extra)
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load extra products');
+    }
+  };
+
   const handleParentProductChange = (value: string) => {
     setSelectedParentProductId(value);
 
@@ -118,6 +134,14 @@ export default function CreateProductPage() {
       prev.includes(storeId)
         ? prev.filter((id) => id !== storeId)
         : [...prev, storeId]
+    );
+  };
+
+  const toggleExtraSelection = (code: string) => {
+    setSelectedExtraCodes((prev) =>
+      prev.includes(code)
+        ? prev.filter((c) => c !== code)
+        : [...prev, code]
     );
   };
 
@@ -191,9 +215,17 @@ export default function CreateProductPage() {
       payload.append('Code', formData.get('Code') as string);
     }
     payload.append('ProductType', selectedProductType.toString());
-    
+
     if (selectedProductType === ProductTypeEnum.Detail && selectedGeneralProductId) {
       payload.append('GeneralProductId', selectedGeneralProductId.toString());
+    }
+
+    if (selectedExtraCodes.length > 0) {
+      selectedExtraCodes.forEach((code) => {
+        payload.append('ExtraProductCodes', code);
+      });
+    } else {
+      payload.append('ExtraProductCodes', '');
     }
 
     payload.append('IsAvailable', formData.get('IsAvailable') === 'on' ? 'true' : 'false');
@@ -305,6 +337,7 @@ export default function CreateProductPage() {
                 <input
                   type="text"
                   name="Code"
+                  required
                   placeholder="Code"
                   className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
@@ -475,6 +508,33 @@ export default function CreateProductPage() {
                   ))}
                 </select>
               </div>
+
+              {productType !== ProductTypeEnum.Extra && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-3 dark:text-gray-300">
+                    Toppings / Extras (Sản phẩm kèm)
+                  </label>
+                  {extraProducts.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Không có sản phẩm kèm nào khả dụng / No extras available</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 border rounded-lg p-4 dark:bg-gray-700 dark:border-gray-600 max-h-48 overflow-y-auto">
+                      {extraProducts.map((extra) => (
+                        <label key={`extra-${extra.id}`} className="flex items-center gap-3 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={selectedExtraCodes.includes(extra.code)}
+                            onChange={() => toggleExtraSelection(extra.code)}
+                            className="w-4 h-4 rounded cursor-pointer"
+                          />
+                          <span className="text-sm dark:text-gray-300">
+                            {extra.productName} ({extra.price.toLocaleString()}đ)
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

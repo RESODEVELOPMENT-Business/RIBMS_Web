@@ -119,6 +119,7 @@ export interface Product {
   priceCogs?: number | null;
 
   memberPoint?: number;
+  extraProductCodes?: string[];
 }
 
 export interface ProductDetailMapping {

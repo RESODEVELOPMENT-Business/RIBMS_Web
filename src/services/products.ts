@@ -12,6 +12,7 @@ export interface CreateProductRequest {
   GeneralProductId?: number | null;
   IsAvailable?: boolean;
   Active?: boolean;
+  ExtraProductCodes?: string[];
 }
 
 export interface UpdateProductRequest {
@@ -42,6 +43,7 @@ export interface UpdateProductRequest {
   AlternativeCode?: string;
   PriceCogs?: number;
   MemberPoint?: number;
+  ExtraProductCodes?: string[];
 }
 
 export interface CreateStoreMappingData {
