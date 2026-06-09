@@ -72,32 +72,20 @@ export default function ProductsReportPage() {
       stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
       undefined;
 
-    const parentRows = buildParentRows(data).flatMap((group, groupIdx) => [
-      {
-        STT: groupIdx + 1,
-        Loai: 'Tổng',
+    // Flatten all child products, sorted/grouped by parent product name
+    let stt = 0;
+    const parentRows = buildParentRows(data).flatMap((group) =>
+      group.childProducts.map((child) => ({
+        STT: ++stt,
         'Sản phẩm cha': group.parentProductName,
-        'Mã cha': group.parentProductCode,
-        'Sản phẩm con': '',
-        'Mã con': '',
-        Nhóm: group.categoryName,
-        'Số lượng': group.quantity,
-        'Doanh thu (VND)': group.revenue,
-        'Tỷ trọng (%)': group.revenueShare,
-      },
-      ...group.childProducts.map((child, childIdx) => ({
-        STT: `${groupIdx + 1}.${childIdx + 1}`,
-        Loai: 'Con',
-        'Sản phẩm cha': '',
-        'Mã cha': '',
-        'Sản phẩm con': `↳ ${child.productName}`,
-        'Mã con': child.productCode,
+        'Sản phẩm': child.productName,
+        Mã: child.productCode,
         Nhóm: child.categoryName,
         'Số lượng': child.quantity,
         'Doanh thu (VND)': child.revenue,
         'Tỷ trọng (%)': child.revenueShare,
       })),
-    ]);
+    );
 
     const productRows = (rows: typeof data.topSellingProducts) =>
       rows.map((p, idx) => ({
@@ -128,7 +116,7 @@ export default function ProductsReportPage() {
       {
         name: 'Theo sản phẩm cha',
         rows: parentRows,
-        columnWidths: [8, 8, 28, 14, 28, 14, 18, 12, 18, 14],
+        columnWidths: [6, 28, 28, 14, 18, 12, 18, 14],
       },
       { name: 'Top bán chạy', rows: productRows(data.topSellingProducts), columnWidths: [6, 32, 14, 18, 12, 18, 14] },
       { name: 'Bán chậm', rows: productRows(data.slowMovingProducts), columnWidths: [6, 32, 14, 18, 12, 18, 14] },
