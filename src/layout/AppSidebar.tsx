@@ -11,6 +11,7 @@ import {
   PieChartIcon,
   BoxCubeIcon,
   PlugInIcon,
+  DocsIcon,
 } from "../icons/index";
 import { useAuthStore } from "@/store/authStore";
 
@@ -36,6 +37,16 @@ const AppSidebar: React.FC = () => {
             icon: <GridIcon />,
             name: "Brands",
             path: "/brands",
+          },
+          {
+            icon: <DocsIcon />,
+            name: "Invoice Settings",
+            path: "/invoice-store-management",
+          },
+          {
+            icon: <PieChartIcon />,
+            name: "Invoice Statistics",
+            path: "/invoice-statistics",
           },
           {
             icon: <PlugInIcon />,

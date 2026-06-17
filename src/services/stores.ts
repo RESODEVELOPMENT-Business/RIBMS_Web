@@ -90,3 +90,15 @@ export const deleteStore = async (id: number) => {
     method: 'DELETE',
   });
 };
+
+export interface StoreExportSettings {
+  isExportInvoice: boolean;
+  exportMode: number; // 0 = Individual, 1 = Merged
+}
+
+export const updateStoreExportSettings = async (id: string, data: StoreExportSettings) => {
+  return await apiClient(`/stores/${id}/export-settings`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};

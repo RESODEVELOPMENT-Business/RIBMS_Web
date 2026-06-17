@@ -22,13 +22,11 @@ export default function BrandDetailPage() {
 
   const fetchData = async () => {
     try {
-      // Assuming GET /api/v1/brands/{id}
       const brandRes = await api.get(`/brands/${brandId}`);
       if (brandRes && brandRes.data) {
         setBrand(brandRes.data);
       }
       
-      // Fetch stores filtered by brandId from the server
       const storesRes = await getStores(1, 100, brandId);
       if (storesRes && storesRes.data) {
         setStores(storesRes.data.items || storesRes.data);
