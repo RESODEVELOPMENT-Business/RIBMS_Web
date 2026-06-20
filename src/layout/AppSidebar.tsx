@@ -49,6 +49,11 @@ const AppSidebar: React.FC = () => {
             path: "/invoice-statistics",
           },
           {
+            icon: <DocsIcon />,
+            name: "Invoices",
+            path: "/invoices",
+          },
+          {
             icon: <PlugInIcon />,
             name: "Updates",
             path: "/updates",

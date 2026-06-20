@@ -80,3 +80,54 @@ export const getInvoiceStatistics = async (fromDate?: string, toDate?: string) =
   if (toDate) params.append('toDate', toDate);
   return await invoiceApi.get<{ data: InvoiceStatisticsDto }>(`/statistics/invoices?${params.toString()}`);
 };
+
+export interface InvoiceDto {
+  id: string;
+  invoiceCode: string;
+  createdDate: string;
+  lookupCode?: string;
+  type?: number;
+  status: number;
+  paymentMethod?: string;
+  totalAmount: number;
+  totalTaxAmount: number;
+  totalAmountAfterTax: number;
+  billCode: string;
+  storeId: string;
+  storeName: string;
+  storeCode: string;
+  buyerName?: string;
+  buyerTaxCode?: string;
+}
+
+export interface PaginatedList<T> {
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+export const getInvoices = async (params: {
+  pageNumber?: number;
+  pageSize?: number;
+  storeId?: string;
+  fromDate?: string;
+  toDate?: string;
+  status?: number;
+  searchKey?: string;
+}) => {
+  const query = new URLSearchParams();
+  if (params.pageNumber !== undefined) query.append('pageNumber', params.pageNumber.toString());
+  if (params.pageSize !== undefined) query.append('pageSize', params.pageSize.toString());
+  if (params.storeId) query.append('storeId', params.storeId);
+  if (params.fromDate) query.append('fromDate', params.fromDate);
+  if (params.toDate) query.append('toDate', params.toDate);
+  if (params.status !== undefined) query.append('status', params.status.toString());
+  if (params.searchKey) query.append('searchKey', params.searchKey);
+
+  return await invoiceApi.get<{ data: PaginatedList<InvoiceDto> }>(`/invoices?${query.toString()}`);
+};
+
