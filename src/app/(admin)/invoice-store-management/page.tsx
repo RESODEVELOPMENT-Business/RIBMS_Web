@@ -57,12 +57,18 @@ export default function InvoiceStoreManagementPage() {
     setSavingStoreId(storeId);
     try {
       const store = stores.find(s => s.id === storeId);
+      const newIsExportInvoice = !currentValue;
       await updateStoreInvoiceSettings(storeId, {
-        isExportInvoice: !currentValue,
+        isExportInvoice: newIsExportInvoice,
         exportMode: store?.exportMode ?? 1,
       });
+      // Update local state directly to prevent page reload
+      setStores(prevStores => 
+        prevStores.map(s => 
+          s.id === storeId ? { ...s, isExportInvoice: newIsExportInvoice } : s
+        )
+      );
       toast.success('Cập nhật trạng thái xuất hóa đơn thành công');
-      await fetchInvoiceStores(selectedBrandCode);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Cập nhật thất bại');
@@ -96,8 +102,13 @@ export default function InvoiceStoreManagementPage() {
         isExportInvoice: store?.isExportInvoice ?? true,
         exportMode: newMode,
       });
+      // Update local state directly to prevent page reload
+      setStores(prevStores => 
+        prevStores.map(s => 
+          s.id === storeId ? { ...s, exportMode: newMode } : s
+        )
+      );
       toast.success('Cập nhật chế độ xuất hóa đơn thành công');
-      await fetchInvoiceStores(selectedBrandCode);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Cập nhật thất bại');
