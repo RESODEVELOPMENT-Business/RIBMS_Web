@@ -109,6 +109,23 @@ const AppSidebar: React.FC = () => {
           },
           {
             icon: <PieChartIcon />,
+            name: "Tổng Quan",
+            subItems: [
+              { name: "Tổng quan doanh thu", path: "/store/sales-dashboard" },
+              { name: "So sánh kỳ", path: "/store/sales-dashboard/comparison" },
+              { name: "Báo cáo đơn hàng", path: "/store/sales-dashboard/orders-report" },
+              { name: "Báo cáo sản phẩm", path: "/store/sales-dashboard/products-report" },
+              { name: "Báo cáo lợi nhuận", path: "/store/sales-dashboard/profit-report" },
+              { name: "Báo cáo tình hình lợi nhuận", path: "/store/sales-dashboard/profit-forecast" },
+              { name: "Vận hành cửa hàng", path: "/store/sales-dashboard/operations-report" },
+              { name: "Vận hành theo ngày", path: "/store/sales-dashboard/daily-operations" },
+              { name: "Khách hàng & Marketing", path: "/store/sales-dashboard/customer-marketing-report" },
+              { name: "Doanh thu cửa hàng", path: "/store/sales-dashboard/top-store-revenues" },
+              { name: "Doanh thu theo thanh toán", path: "/store/sales-dashboard/store-payment-methods" },
+            ],
+          },
+          {
+            icon: <PieChartIcon />,
             name: "Kết Ca",
             path: "/store/shift-sales",
           },
