@@ -111,7 +111,7 @@ const AppSidebar: React.FC = () => {
             icon: <PieChartIcon />,
             name: "Tổng Quan",
             subItems: [
-              { name: "Tổng quan doanh thu", path: "/store/sales-dashboard" },
+              { name: "Tổng quan doanh thu", path: "/store/shift-sales" },
               { name: "So sánh kỳ", path: "/store/sales-dashboard/comparison" },
               { name: "Báo cáo đơn hàng", path: "/store/sales-dashboard/orders-report" },
               { name: "Báo cáo sản phẩm", path: "/store/sales-dashboard/products-report" },
@@ -123,11 +123,6 @@ const AppSidebar: React.FC = () => {
               { name: "Doanh thu cửa hàng", path: "/store/sales-dashboard/top-store-revenues" },
               { name: "Doanh thu theo thanh toán", path: "/store/sales-dashboard/store-payment-methods" },
             ],
-          },
-          {
-            icon: <PieChartIcon />,
-            name: "Kết Ca",
-            path: "/store/shift-sales",
           },
           {
             icon: <PieChartIcon />,
@@ -342,8 +337,8 @@ const AppSidebar: React.FC = () => {
         className={`py-6 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
           }`}
       >
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="flex items-center gap-3 transition-transform duration-300 hover:scale-102 active:scale-98 select-none"
           aria-label="RIBMS Home"
         >
