@@ -58,6 +58,11 @@ const AppSidebar: React.FC = () => {
             name: "Updates",
             path: "/updates",
           },
+          {
+            icon: <PieChartIcon />,
+            name: "Loyalty",
+            path: "/loyalty",
+          },
         ];
 
       case "BrandManager":

@@ -44,6 +44,13 @@ export default function ProductDetailPage() {
   const [newMappingDiscount, setNewMappingDiscount] = useState<string>('');
   const [addingMapping, setAddingMapping] = useState(false);
 
+  // Edit mapping inline
+  const [editingMappingId, setEditingMappingId] = useState<number | null>(null);
+  const [editPrice, setEditPrice] = useState<string>('');
+  const [editDiscountPrice, setEditDiscountPrice] = useState<string>('');
+  const [editDiscountPercent, setEditDiscountPercent] = useState<string>('');
+  const [savingMapping, setSavingMapping] = useState(false);
+
   useEffect(() => {
     if (productId) fetchProduct();
   }, [productId]);
@@ -145,6 +152,39 @@ export default function ProductDetailPage() {
       fetchMappings();
     } catch (err: any) {
       toast.error(`Error: ${err.message}`);
+    }
+  };
+
+  const handleStartEditMapping = (mapping: ProductDetailMapping) => {
+    setEditingMappingId(mapping.productDetailId);
+    setEditPrice(mapping.price != null ? String(mapping.price) : '');
+    setEditDiscountPrice(mapping.discountPrice != null ? String(mapping.discountPrice) : '');
+    setEditDiscountPercent(mapping.discountPercent != null ? String(mapping.discountPercent) : '');
+  };
+
+  const handleCancelEditMapping = () => {
+    setEditingMappingId(null);
+    setEditPrice('');
+    setEditDiscountPrice('');
+    setEditDiscountPercent('');
+  };
+
+  const handleSaveEditMapping = async () => {
+    if (!editingMappingId) return;
+    setSavingMapping(true);
+    try {
+      await updateProductDetailMapping(editingMappingId, {
+        Price: editPrice ? Number(editPrice) : null,
+        DiscountPrice: editDiscountPrice ? Number(editDiscountPrice) : null,
+        DiscountPercent: editDiscountPercent ? Number(editDiscountPercent) : null,
+      });
+      toast.success('Mapping updated!');
+      handleCancelEditMapping();
+      fetchMappings();
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setSavingMapping(false);
     }
   };
 
@@ -374,68 +414,126 @@ export default function ProductDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y dark:divide-gray-700">
-                  {mappings.map((m) => (
-                    <tr key={m.productDetailId} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                      <td className="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">
-                        {m.productDetailId}
-                      </td>
-                      <td className="px-5 py-3 font-medium text-gray-800 dark:text-white">
-                        {(m as any).storeName || (m.store as any)?.name || `Store #${m.storeId}`}
-                      </td>
-                      <td className="px-5 py-3">
-                        {m.price != null ? (
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                            {formatCurrency(m.price)}
+                  {mappings.map((m) => {
+                    const isEditing = editingMappingId === m.productDetailId;
+                    return (
+                      <tr key={m.productDetailId} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <td className="px-5 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">
+                          {m.productDetailId}
+                        </td>
+                        <td className="px-5 py-3 font-medium text-gray-800 dark:text-white">
+                          {(m as any).storeName || (m.store as any)?.name || `Store #${m.storeId}`}
+                        </td>
+                        <td className="px-5 py-3">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editPrice}
+                              onChange={(e) => setEditPrice(e.target.value)}
+                              placeholder="Price"
+                              className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
+                          ) : m.price != null ? (
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                              {formatCurrency(m.price)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editDiscountPrice}
+                              onChange={(e) => setEditDiscountPrice(e.target.value)}
+                              placeholder="Discount"
+                              className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
+                          ) : m.discountPrice != null ? (
+                            <span className="text-red-500 font-medium">{formatCurrency(m.discountPrice)}</span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              value={editDiscountPercent}
+                              onChange={(e) => setEditDiscountPercent(e.target.value)}
+                              placeholder="%"
+                              className="w-full p-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
+                          ) : m.discountPercent ? (
+                            <span className="text-red-600 font-semibold">-{m.discountPercent}%</span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${m.active
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                              }`}
+                          >
+                            {m.active ? 'Active' : 'Inactive'}
                           </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        {m.discountPrice != null ? (
-                          <span className="text-red-500 font-medium">{formatCurrency(m.discountPrice)}</span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        {m.discountPercent ? (
-                          <span className="text-red-600 font-semibold">-{m.discountPercent}%</span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${m.active
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                            }`}
-                        >
-                          {m.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <div className="flex justify-end gap-3">
-                          <button
-                            onClick={() => handleToggleMapping(m)}
-                            className={`text-xs font-medium ${m.active
-                              ? 'text-amber-500 hover:text-amber-700'
-                              : 'text-green-500 hover:text-green-700'
-                              } transition-colors`}
-                          >
-                            {m.active ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMapping(m.productDetailId)}
-                            className="text-xs font-medium text-red-500 hover:text-red-700 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <div className="flex justify-end gap-3">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  onClick={handleSaveEditMapping}
+                                  disabled={savingMapping}
+                                  className="text-xs font-medium text-green-500 hover:text-green-700 transition-colors disabled:opacity-50"
+                                >
+                                  {savingMapping ? 'Saving…' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={handleCancelEditMapping}
+                                  className="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleStartEditMapping(m)}
+                                  className="text-xs font-medium text-blue-500 hover:text-blue-700 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleToggleMapping(m)}
+                                  className={`text-xs font-medium ${m.active
+                                    ? 'text-amber-500 hover:text-amber-700'
+                                    : 'text-green-500 hover:text-green-700'
+                                    } transition-colors`}
+                                >
+                                  {m.active ? 'Deactivate' : 'Activate'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMapping(m.productDetailId)}
+                                  className="text-xs font-medium text-red-500 hover:text-red-700 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
