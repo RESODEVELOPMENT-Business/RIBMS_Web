@@ -13,6 +13,8 @@ import {
   GIFT_TYPE_LABELS,
   APPLY_LEVEL_LABELS,
   UpdatePromotionData,
+  createPromotionDetail,
+  CreatePromotionDetailData,
 } from '@/services/promotions';
 import { getProductCategories } from '@/services/productCategories';
 import { getProducts } from '@/services/products';
@@ -31,6 +33,8 @@ export default function PromotionDetailPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [editingDetailId, setEditingDetailId] = useState<number | null>(null);
   const [editingDetailData, setEditingDetailData] = useState<any>({});
+  const [addingDetail, setAddingDetail] = useState(false);
+  const [newDetailData, setNewDetailData] = useState<any>({});
 
   // Editing state
   const [editing, setEditing] = useState(false);
@@ -158,6 +162,38 @@ export default function PromotionDetailPage() {
       toast.error(`Error: ${err.message}`);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const setNewEd = (field: string, value: any) => setNewDetailData((prev: any) => ({ ...prev, [field]: value }));
+
+  const handleSaveNewDetail = async () => {
+    try {
+      const payload: any = {
+        buyProductCode: newDetailData.buyProductCode || '',
+        giftProductCode: newDetailData.giftProductCode || '',
+        discountRate: newDetailData.discountRate,
+        discountAmount: newDetailData.discountAmount,
+        minOrderAmount: newDetailData.minOrderAmount,
+        maxOrderAmount: newDetailData.maxOrderAmount,
+        minBuyQuantity: newDetailData.minBuyQuantity,
+        maxBuyQuantity: newDetailData.maxBuyQuantity,
+        giftQuantity: newDetailData.giftQuantity,
+        promotionDetailCode: newDetailData.promotionDetailCode || undefined,
+      };
+
+      // Convert giftProductCode if Category ID
+      const isGiftType = promo.giftType === 1;
+      if (payload.giftProductCode && isGiftType && !payload.giftProductCode.toString().startsWith('P:')) {
+        payload.giftProductCode = String(Number(payload.giftProductCode));
+      }
+
+      await createPromotionDetail(promotionId, payload);
+      toast.success('Detail rule added!');
+      setAddingDetail(false);
+      fetchPromotion();
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
     }
   };
 
@@ -342,11 +378,163 @@ export default function PromotionDetailPage() {
       {/* ─── Tab: Detail Rules ─── */}
       {activeTab === 'details' && (
         <div className="space-y-4">
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-blue-900 dark:text-blue-100">
-              <strong>💡 Tip:</strong> Click <strong>✎ Edit</strong> on any rule to modify all fields. GiftType: <strong>{GIFT_TYPE_LABELS[promo.giftType] || promo.giftType}</strong>
-            </p>
+          <div className="flex justify-between items-center gap-4">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex-1">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <strong>💡 Tip:</strong> Click <strong>✎ Edit</strong> on any rule to modify all fields. GiftType: <strong>{GIFT_TYPE_LABELS[promo.giftType] || promo.giftType}</strong>
+              </p>
+            </div>
+            {!addingDetail && (
+              <button
+                onClick={() => {
+                  setAddingDetail(true);
+                  setNewDetailData({});
+                }}
+                className="px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+              >
+                + Add Rule
+              </button>
+            )}
           </div>
+
+          {/* New Rule Form */}
+          {addingDetail && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5 border-2 border-brand-500/30 space-y-4">
+              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                Add New Rule
+              </h3>
+              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                {/* BuyProductCode picker */}
+                <div>
+                  <label className={labelCls}>Áp dụng theo (Buy Product)</label>
+                  <div className="flex gap-3 mb-2">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input type="radio" name="newBuyMode" checked={!newDetailData.buyProductCode?.toString().startsWith('P:')}
+                        onChange={() => setNewEd('buyProductCode', undefined)} className="w-4 h-4 text-brand-500" />
+                      <span className="text-sm font-medium dark:text-gray-300">Category</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input type="radio" name="newBuyMode" checked={newDetailData.buyProductCode?.toString().startsWith('P:') || false}
+                        onChange={() => setNewEd('buyProductCode', 'P:')} className="w-4 h-4 text-brand-500" />
+                      <span className="text-sm font-medium dark:text-gray-300">Sản phẩm cụ thể</span>
+                    </label>
+                  </div>
+                  {newDetailData.buyProductCode?.toString().startsWith('P:') ? (
+                    <div>
+                      <input type="text" placeholder="🔍 Tìm sản phẩm..." className={`${inputCls} mb-2`}
+                        value={newDetailData._buySearch || ''} onChange={(e) => setNewEd('_buySearch', e.target.value)} />
+                      <div className="max-h-[180px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                        {products.filter((p: any) => { const s = (newDetailData._buySearch||'').toLowerCase(); return !s || (p.productName||'').toLowerCase().includes(s) || String(p.id||p.productId).includes(s); }).map((prod: any) => {
+                          const pid = String(prod.id||prod.productId);
+                          const sids = newDetailData.buyProductCode?.toString().slice(2).split(',').filter(Boolean) || [];
+                          const chk = sids.includes(pid);
+                          return (<label key={pid} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm ${chk ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                            <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x:string)=>x!==pid) : [...sids,pid]; setNewEd('buyProductCode', n.length>0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-brand-500" />
+                            <span className={chk?'font-semibold text-brand-700 dark:text-brand-300':'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
+                            <span className="text-xs text-gray-400 ml-auto">ID: {pid}</span>
+                          </label>);
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <select className={inputCls} value={newDetailData.buyProductCode||''} onChange={(e) => setNewEd('buyProductCode', e.target.value||null)}>
+                      <option value="">-- Không áp dụng theo category --</option>
+                      {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.categoryName} (ID: {cat.id})</option>))}
+                    </select>
+                  )}
+                </div>
+
+                {/* GiftProductCode picker (only for GiftType=1) */}
+                {promo.giftType === 1 && (
+                  <div>
+                    <label className={labelCls}>Sản phẩm tặng (Gift Product)</label>
+                    <div className="flex gap-3 mb-2">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="radio" name="newGiftMode" checked={!newDetailData.giftProductCode?.toString().startsWith('P:')}
+                          onChange={() => setNewEd('giftProductCode', undefined)} className="w-4 h-4 text-brand-500" />
+                        <span className="text-sm font-medium dark:text-gray-300">Tặng theo Category</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="radio" name="newGiftMode" checked={newDetailData.giftProductCode?.toString().startsWith('P:') || false}
+                          onChange={() => setNewEd('giftProductCode', 'P:')} className="w-4 h-4 text-brand-500" />
+                        <span className="text-sm font-medium dark:text-gray-300">Sản phẩm cụ thể</span>
+                      </label>
+                    </div>
+                    {newDetailData.giftProductCode?.toString().startsWith('P:') ? (
+                      <div>
+                        <input type="text" placeholder="🔍 Tìm sản phẩm tặng..." className={`${inputCls} mb-2`}
+                          value={newDetailData._giftSearch || ''} onChange={(e) => setNewEd('_giftSearch', e.target.value)} />
+                        <div className="max-h-[180px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                          {products.filter((p: any) => { const s = (newDetailData._giftSearch||'').toLowerCase(); return !s || (p.productName||'').toLowerCase().includes(s) || String(p.id||p.productId).includes(s); }).map((prod: any) => {
+                            const pid = String(prod.id||prod.productId);
+                            const sids = newDetailData.giftProductCode?.toString().slice(2).split(',').filter(Boolean) || [];
+                            const chk = sids.includes(pid);
+                            return (<label key={pid} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm ${chk ? 'bg-purple-50 dark:bg-purple-900/20 border border-purple-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                              <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x:string)=>x!==pid) : [...sids,pid]; setNewEd('giftProductCode', n.length>0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-purple-500" />
+                              <span className={chk?'font-semibold text-purple-700 dark:text-purple-300':'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
+                              <span className="text-xs text-gray-400 ml-auto">ID: {pid}</span>
+                            </label>);
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <select className={inputCls} value={newDetailData.giftProductCode||''} onChange={(e) => setNewEd('giftProductCode', e.target.value||null)}>
+                        <option value="">-- Chọn category tặng --</option>
+                        {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.categoryName} (ID: {cat.id})</option>))}
+                      </select>
+                    )}
+                  </div>
+                )}
+
+                {/* Numeric fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {promo.giftType !== 1 && (<>
+                    <div>
+                      <label className={labelCls}>Giảm giá (%)</label>
+                      <input type="number" step="0.01" min="0" max="100" className={inputCls} value={newDetailData.discountRate??''} onChange={(e) => setNewEd('discountRate', e.target.value ? Number(e.target.value) : null)} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Giảm giá (tiền)</label>
+                      <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.discountAmount??''} onChange={(e) => setNewEd('discountAmount', e.target.value ? Number(e.target.value) : null)} />
+                    </div>
+                  </>)}
+                  <div>
+                    <label className={labelCls}>Giá trị đơn hàng tối thiểu</label>
+                    <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.minOrderAmount??''} onChange={(e) => setNewEd('minOrderAmount', e.target.value ? Number(e.target.value) : null)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Giá trị đơn hàng tối đa</label>
+                    <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.maxOrderAmount??''} onChange={(e) => setNewEd('maxOrderAmount', e.target.value ? Number(e.target.value) : null)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Số lượng mua tối thiểu</label>
+                    <input type="number" min="1" className={inputCls} value={newDetailData.minBuyQuantity??''} onChange={(e) => setNewEd('minBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Số lượng được giảm tối đa</label>
+                    <input type="number" min="1" className={inputCls} value={newDetailData.maxBuyQuantity??''} onChange={(e) => setNewEd('maxBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
+                  </div>
+                  {promo.giftType === 1 && (
+                    <div>
+                      <label className={labelCls}>Số lượng tặng</label>
+                      <input type="number" min="1" className={inputCls} value={newDetailData.giftQuantity??''} onChange={(e) => setNewEd('giftQuantity', e.target.value ? Number(e.target.value) : null)} />
+                    </div>
+                  )}
+                  <div>
+                    <label className={labelCls}>Rule Code (Optional)</label>
+                    <input className={inputCls} value={newDetailData.promotionDetailCode || ''} onChange={(e) => setNewEd('promotionDetailCode', e.target.value)} placeholder="e.g. SUMMER26-R1" />
+                  </div>
+                </div>
+
+                {/* Save/Cancel */}
+                <div className="flex justify-end gap-2 pt-2">
+                  <button onClick={() => setAddingDetail(false)} className="px-4 py-2 text-sm border rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                  <button onClick={handleSaveNewDetail} className="px-5 py-2 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium">Save Changes</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {promo.details && promo.details.length > 0 ? (
             promo.details.map((d: any, i: number) => {
               const isEditing = editingDetailId === d.promotionDetailId;

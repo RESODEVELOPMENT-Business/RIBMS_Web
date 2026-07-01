@@ -159,6 +159,16 @@ export const updatePromotionDetail = async (
   });
 };
 
+export const createPromotionDetail = async (
+  promotionId: number,
+  data: CreatePromotionDetailData
+) => {
+  return await apiClient(`/promotions/${promotionId}/details`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
 export const updateStoreMapping = async (
   mappingId: number,
   data: UpdateStoreMappingData

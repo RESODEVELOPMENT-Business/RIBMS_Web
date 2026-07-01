@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/services/apiClient';
-import { addSuperVip, removeSuperVip } from '@/services/loyalty';
+import { addSuperVip, removeSuperVip, changeTier } from '@/services/loyalty';
 import { DataTable } from '@/components/ui/data-table';
 import { SkeletonTable } from '@/components/ui/skeleton-table';
 import { Modal } from '@/components/ui/modal';
@@ -18,15 +18,27 @@ export default function LoyaltyAdminPage() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerResults, setCustomerResults] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState<number | ''>('');
 
   const [submitting, setSubmitting] = useState(false);
   const [searching, setSearching] = useState(false);
+
+  // Load brands on mount
+  useEffect(() => {
+    api.get('/brands?page=1&size=50').then(res => {
+      const items = res?.data?.items || res?.data || [];
+      setBrands(items);
+      if (items.length > 0) setSelectedBrandId(items[0].id);
+    }).catch(() => {});
+  }, []);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       if (activeTab === 'stats') {
-        const res = await api.get('/loyalty/stats');
+        const url = selectedBrandId ? `/loyalty/stats?brandId=${selectedBrandId}` : '/loyalty/stats';
+        const res = await api.get(url);
         setStats(res?.data || null);
       } else {
         const res = await api.get('/admin/super-vip/list');
@@ -35,7 +47,7 @@ export default function LoyaltyAdminPage() {
     } catch (err: any) {
       toast.error(err.message || 'Failed to load data');
     } finally { setLoading(false); }
-  }, [activeTab]);
+  }, [activeTab, selectedBrandId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -65,62 +77,123 @@ export default function LoyaltyAdminPage() {
     } finally { setSubmitting(false); }
   };
 
-  const handleRemove = async (customerId: number) => {
-    if (!confirm('Remove Super VIP status from this customer?')) return;
-    try {
-      await api.delete(`/admin/super-vip/remove/${customerId}`);
-      toast.success('Super VIP removed');
-      fetchAll();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed');
-    }
-  };
-
   const columns = useMemo<ColumnDef<any>[]>(() => [
     { accessorKey: 'externalId', header: 'ID' },
     { accessorKey: 'name', header: 'Name' },
     { accessorKey: 'email', header: 'Email' },
     { accessorKey: 'phone', header: 'Phone' },
+    { accessorKey: 'balance', header: 'Points',
+      cell: ({ row }) => row.original.balance ?? 0,
+    },
+    { accessorKey: 'currentTierName', header: 'Tier',
+      cell: ({ row }) => {
+        const item = row.original;
+        const currentTier = item.isSuperVip ? 'SUPERVIP' : 'BASESPEND';
+        return (
+          <select
+            value={currentTier}
+            onChange={async (e) => {
+              const val = e.target.value;
+              try {
+                if (val === 'SUPERVIP') {
+                  await addSuperVip(Number(item.externalId));
+                  toast.success(`Super VIP status activated: ${item.name}`);
+                } else {
+                  await removeSuperVip(Number(item.externalId));
+                  toast.success(`Reset to spend-based tier: ${item.name}`);
+                }
+                fetchAll();
+              } catch (err: any) {
+                toast.error(err.message || 'Failed to update tier');
+              }
+            }}
+            className="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            <option value="BASESPEND">Normal ({item.currentTierName || 'Member'})</option>
+            <option value="SUPERVIP">SUPER VIP</option>
+          </select>
+        );
+      }
+    },
     { accessorKey: 'enrolledAt', header: 'Member Since',
       cell: ({ row }) => {
         const d = row.original.enrolledAt;
         return d ? new Date(d).toLocaleDateString('vi-VN') : '—';
       },
     },
-    { id: 'actions', header: '', width: 50,
-      cell: ({ row }) => (
-        <button onClick={() => handleRemove(Number(row.original.externalId))}
-          className="text-red-500 hover:text-red-700 text-lg" title="Remove">✕</button>
-      )
-    },
-  ], []);
+  ], [fetchAll]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Loyalty Management</h1>
-      <div className="flex gap-2 border-b dark:border-gray-700 pb-2">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Loyalty Management</h1>
+        {activeTab === 'stats' && brands.length > 0 && (
+          <select
+            value={selectedBrandId}
+            onChange={e => setSelectedBrandId(Number(e.target.value))}
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+          >
+            {brands.map((b: any) => (
+              <option key={b.id} value={b.id}>{b.brandName}</option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
         <button onClick={() => setActiveTab('stats')}
-          className={`px-4 py-2 rounded-t font-medium text-sm ${activeTab === 'stats' ? 'bg-white dark:bg-gray-800 border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
-          📊 Stats
+          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'stats'
+              ? 'border-brand-500 text-brand-500'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+          }`}>
+          Stats
         </button>
         <button onClick={() => setActiveTab('supervip')}
-          className={`px-4 py-2 rounded-t font-medium text-sm ${activeTab === 'supervip' ? 'bg-white dark:bg-gray-800 border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
-          ⭐ Super VIP
+          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'supervip'
+              ? 'border-brand-500 text-brand-500'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+          }`}>
+          Members
         </button>
       </div>
 
       {activeTab === 'stats' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { label: 'Total Members', value: stats?.totalMembers ?? '—', color: '#2563EB' },
-            { label: 'Active Orders (30d)', value: stats?.active30d ?? '—', color: '#16A34A' },
-            { label: 'Completed Orders (30d)', value: stats?.totalOrders30d ?? '—', color: '#0D9488' },
-          ].map((s, i) => (
-            <div key={i} className="bg-white rounded-lg shadow dark:bg-gray-800 p-6">
-              <p className="text-sm text-gray-500 dark:text-gray-400">{s.label}</p>
-              <p style={{ color: s.color }} className="text-2xl font-bold mt-2">{String(s.value)}</p>
+        <div className="space-y-6">
+          {/* Tổng quan */}
+          <div className="bg-white rounded-xl shadow-theme-sm dark:bg-gray-800 p-6">
+            <p className="text-theme-xs text-gray-500 dark:text-gray-400">Total Customers</p>
+            <p className="text-title-sm text-gray-900 dark:text-white font-bold mt-1">
+              {stats?.totalCustomers?.toLocaleString('vi-VN') ?? '—'}
+            </p>
+          </div>
+
+          {/* Phân bố hạng */}
+          <div className="bg-white rounded-xl shadow-theme-sm dark:bg-gray-800 p-6">
+            <h3 className="text-title-sm text-gray-900 dark:text-white font-bold mb-5">Tier Distribution</h3>
+            <div className="space-y-4">
+              {stats?.tierDistribution?.length > 0 ? (
+                stats.tierDistribution.map((t: any, i: number) => {
+                  const total = stats.totalCustomers || 1;
+                  const pct = Math.round((t.count / total) * 100);
+                  const colors = ['#465FFF', '#6366F1', '#0EA5E9', '#8B5CF6'];
+                  return (
+                    <div key={i} className="flex items-center gap-4">
+                      <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300 w-20">{t.tier}</span>
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: colors[i % colors.length] }} />
+                      </div>
+                      <span className="text-theme-sm text-gray-500 dark:text-gray-400 w-16 text-right">{t.count}</span>
+                      <span className="text-theme-xs text-gray-400 w-12 text-right">{pct}%</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-theme-sm text-gray-400">Loading...</p>
+              )}
             </div>
-          ))}
+          </div>
         </div>
       )}
 
@@ -134,7 +207,7 @@ export default function LoyaltyAdminPage() {
           </div>
           <div className="bg-white rounded-lg shadow dark:bg-gray-800 p-6">
             {loading ? <SkeletonTable columns={6} rows={5} /> : (
-              <DataTable columns={columns} data={superVips} searchKey="customerName" searchPlaceholder="Search..." />
+              <DataTable columns={columns} data={superVips} searchKey="name" searchPlaceholder="Search..." />
             )}
           </div>
         </div>

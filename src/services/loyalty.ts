@@ -24,3 +24,11 @@ export const removeSuperVip = async (customerId: number) => {
     method: 'DELETE',
   });
 };
+
+export const changeTier = async (customerId: number, tierName: string) => {
+  return await apiClient('/admin/super-vip/change-tier', {
+    method: 'POST',
+    body: JSON.stringify({ customerId, tierName }),
+  });
+};
+

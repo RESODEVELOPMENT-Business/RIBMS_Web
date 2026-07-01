@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import DatePicker from '@/components/form/date-picker';
 import {
   getInvoiceBrands,
   getInvoiceStoresByBrandCode,
@@ -81,6 +82,14 @@ function getStatusBadge(status: number) {
   );
 }
 
+const PRESETS = [
+  { label: 'Hôm nay', days: 0 },
+  { label: 'Hôm qua', days: 1, type: 'yesterday' },
+  { label: '3 ngày qua', days: 3 },
+  { label: '7 ngày qua', days: 7 },
+  { label: '30 ngày qua', days: 30 },
+];
+
 export default function InvoicesPage() {
   const [invoicesData, setInvoicesData] = useState<PaginatedList<InvoiceDto> | null>(null);
   const [brands, setBrands] = useState<InvoiceBrandDto[]>([]);
@@ -91,8 +100,12 @@ export default function InvoicesPage() {
   // Filters
   const [searchKey, setSearchKey] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
+  const [fromDate, setFromDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [toDate, setToDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   
   // Pagination & Loading
   const [page, setPage] = useState<number>(1);
@@ -170,11 +183,33 @@ export default function InvoicesPage() {
   const handleResetFilters = () => {
     setSearchKey('');
     setStatusFilter('all');
-    setFromDate('');
-    setToDate('');
+    
+    const today = new Date();
+    const start = new Date();
+    start.setDate(today.getDate() - 7);
+    setFromDate(start.toISOString().split('T')[0]);
+    setToDate(today.toISOString().split('T')[0]);
+
     setSelectedBrandCode('');
     setStores([]);
     setSelectedStoreId('');
+    setPage(1);
+  };
+
+  const applyPreset = (preset: typeof PRESETS[number]) => {
+    const today = new Date();
+    if (preset.type === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+      const yStr = yesterday.toISOString().split('T')[0];
+      setFromDate(yStr);
+      setToDate(yStr);
+    } else {
+      const start = new Date();
+      start.setDate(today.getDate() - preset.days);
+      setFromDate(start.toISOString().split('T')[0]);
+      setToDate(today.toISOString().split('T')[0]);
+    }
     setPage(1);
   };
 
@@ -273,31 +308,26 @@ export default function InvoicesPage() {
             </select>
           </div>
 
-          {/* From Date */}
-          <div className="flex flex-col space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400">Từ ngày</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => {
-                setFromDate(e.target.value);
-                setPage(1);
+          {/* Date Range Picker */}
+          <div className="flex flex-col space-y-1 md:col-span-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400">Khoảng thời gian</label>
+            <DatePicker
+              id="invoice-date-range"
+              mode="range"
+              defaultDate={fromDate && toDate ? `${fromDate} to ${toDate}` : undefined}
+              onChange={(selectedDates: Date[], dateStr: string) => {
+                if (dateStr.includes(' to ') || selectedDates.length >= 2) {
+                  const parts = dateStr.split(' to ');
+                  const from = parts[0];
+                  const to = parts[1] || parts[0];
+                  if (from) {
+                    setFromDate(from);
+                    setToDate(to || from);
+                    setPage(1);
+                  }
+                }
               }}
-              className="border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            />
-          </div>
-
-          {/* To Date */}
-          <div className="flex flex-col space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400">Đến ngày</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => {
-                setToDate(e.target.value);
-                setPage(1);
-              }}
-              className="border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              placeholder="Chọn khoảng thời gian (Từ ngày - Đến ngày)"
             />
           </div>
 
@@ -319,6 +349,20 @@ export default function InvoicesPage() {
             </button>
           </div>
         </form>
+
+        {/* Presets */}
+        <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+          {PRESETS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => applyPreset(p)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 transition-colors"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Main Table */}
