@@ -108,6 +108,29 @@ export default function ProductListPage() {
       ),
     },
     {
+      accessorKey: 'displayOrder',
+      header: 'Priority',
+      cell: (info) => (
+        <span className="font-semibold text-amber-600 dark:text-amber-400">
+          {String(info.getValue() ?? '0')}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'isMostOrdered',
+      header: 'Best Seller',
+      cell: ({ row }) => {
+        const isMostOrdered = row.original.isMostOrdered;
+        return isMostOrdered ? (
+          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            ★ Bán chạy
+          </span>
+        ) : (
+          <span className="text-gray-400 text-xs">—</span>
+        );
+      },
+    },
+    {
       accessorKey: 'active',
       header: 'Status',
       cell: ({ row }) => {

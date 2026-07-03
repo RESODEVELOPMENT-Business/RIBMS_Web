@@ -167,6 +167,7 @@ export default function EditProductPage() {
     }
 
     payload.append("catId", String(catIdVal));
+    payload.append("DisplayOrder", Number(formData.get("displayOrder") || 0).toString());
 
     const code = formData.get("code") as string;
     if (code) {
@@ -188,6 +189,7 @@ export default function EditProductPage() {
     }
 
     payload.append("active", formData.get("active") === "on" ? "true" : "false");
+    payload.append("IsMostOrdered", formData.get("isMostOrdered") === "on" ? "true" : "false");
 
     const imageFile = formData.get('imageFile') as File;
     if (imageFile && imageFile.size > 0) {
@@ -356,6 +358,16 @@ export default function EditProductPage() {
             />
           </div>
           <div>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Display Order / Priority (Ưu tiên)</label>
+            <input
+              type="number"
+              name="displayOrder"
+              defaultValue={product?.displayOrder != null ? Number(product.displayOrder) : 0}
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Category</label>
             {(() => {
               const savedName = product.productCategoryName;
@@ -449,6 +461,16 @@ export default function EditProductPage() {
               className="w-4 h-4 text-blue-600"
             />
             <label htmlFor="active" className="text-sm font-medium dark:text-gray-300">Active</label>
+          </div>
+          <div className="md:col-span-2 flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              name="isMostOrdered"
+              id="isMostOrdered"
+              defaultChecked={Boolean(product?.isMostOrdered)}
+              className="w-4 h-4 text-blue-600"
+            />
+            <label htmlFor="isMostOrdered" className="text-sm font-medium dark:text-gray-300">Best Seller / Bán chạy</label>
           </div>
           <div className="md:col-span-2 mt-4 flex justify-end gap-2">
             <button

@@ -211,6 +211,7 @@ export default function CreateProductPage() {
       payload.append('PriceCogs', priceCogs.toString());
     }
     payload.append('CatId', selectedCatId.toString());
+    payload.append('DisplayOrder', Number(formData.get('DisplayOrder') || 0).toString());
     if (formData.get('Code')) {
       payload.append('Code', formData.get('Code') as string);
     }
@@ -230,6 +231,7 @@ export default function CreateProductPage() {
 
     payload.append('IsAvailable', formData.get('IsAvailable') === 'on' ? 'true' : 'false');
     payload.append('Active', formData.get('Active') === 'on' ? 'true' : 'false');
+    payload.append('IsMostOrdered', formData.get('IsMostOrdered') === 'on' ? 'true' : 'false');
 
     const imageFile = formData.get('imageFile') as File;
     if (imageFile && imageFile.size > 0) {
@@ -441,6 +443,19 @@ export default function CreateProductPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-2 dark:text-gray-300">
+                  Display Order / Priority (Ưu tiên)
+                </label>
+                <input
+                  type="number"
+                  name="DisplayOrder"
+                  placeholder="0"
+                  defaultValue="0"
+                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 dark:text-gray-300">
                   Category
                 </label>
 
@@ -575,6 +590,22 @@ export default function CreateProductPage() {
                   className="dark:text-gray-300"
                 >
                   Active
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  name="IsMostOrdered"
+                  id="isMostOrdered"
+                  className="w-4 h-4"
+                />
+
+                <label
+                  htmlFor="isMostOrdered"
+                  className="dark:text-gray-300"
+                >
+                  Best Seller / Bán chạy
                 </label>
               </div>
             </div>

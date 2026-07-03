@@ -53,6 +53,15 @@ export default function ProductCategoryListPage() {
       cell: (info) => info.getValue(),
     },
     {
+      accessorKey: 'displayOrder',
+      header: 'Display Order',
+      cell: (info) => (
+        <span className="font-semibold text-amber-600 dark:text-amber-400">
+          {String(info.getValue() ?? '0')}
+        </span>
+      ),
+    },
+    {
       accessorKey: 'active',
       header: 'Status',
       cell: ({ row }) => {
