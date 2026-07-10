@@ -145,13 +145,13 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl shadow-gray-100/50 dark:shadow-none overflow-x-auto">
-        <Table className="w-full min-w-[1200px]">
+        <Table className="w-full">
           <TableHeader className="bg-gray-50 dark:bg-gray-800">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableCell key={header.id} isHeader className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                    <TableCell key={header.id} isHeader className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -173,7 +173,7 @@ export function DataTable<TData, TValue>({
                   className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                    <TableCell key={cell.id} className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
