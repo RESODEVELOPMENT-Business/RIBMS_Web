@@ -159,6 +159,12 @@ export default function ProductListPage() {
               <PencilIcon className="w-4 h-4" />
               Details
             </Link>
+            <Link
+              href={`/products/${id}/edit`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
+            >
+              Edit
+            </Link>
           </div>
         );
       }

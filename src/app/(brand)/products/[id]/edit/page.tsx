@@ -189,6 +189,7 @@ export default function EditProductPage() {
     }
 
     payload.append("active", formData.get("active") === "on" ? "true" : "false");
+    payload.append("IsMenuDisplay", formData.get("isMenuDisplay") === "on" ? "true" : "false");
     payload.append("IsMostOrdered", formData.get("isMostOrdered") === "on" ? "true" : "false");
 
     const imageFile = formData.get('imageFile') as File;
@@ -461,6 +462,16 @@ export default function EditProductPage() {
               className="w-4 h-4 text-blue-600"
             />
             <label htmlFor="active" className="text-sm font-medium dark:text-gray-300">Active</label>
+          </div>
+          <div className="md:col-span-2 flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="isMenuDisplay"
+              id="isMenuDisplay"
+              defaultChecked={product?.isMenuDisplay ?? true}
+              className="w-4 h-4 text-blue-600"
+            />
+            <label htmlFor="isMenuDisplay" className="text-sm font-medium dark:text-gray-300">Hiển thị trên App (IsMenuDisplay)</label>
           </div>
           <div className="md:col-span-2 flex items-center gap-2 mt-2">
             <input
