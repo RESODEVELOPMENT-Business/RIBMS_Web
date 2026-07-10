@@ -144,8 +144,8 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl shadow-gray-100/50 dark:shadow-none overflow-hidden">
-        <Table className="w-full">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl shadow-gray-100/50 dark:shadow-none overflow-x-auto">
+        <Table className="w-full min-w-[1200px]">
           <TableHeader className="bg-gray-50 dark:bg-gray-800">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
