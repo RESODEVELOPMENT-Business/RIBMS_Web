@@ -89,8 +89,8 @@ export const deleteCostCategory = async (id: number) => {
 
 // ─── Costs ────────────────────────────────────────────────────────────
 
-export const getCostsByStore = async (storeId: number) => {
-  return await apiClient(`/costs/store/${storeId}`);
+export const getCostsByStore = async (storeId: number, page = 1, size = 20) => {
+  return await apiClient(`/costs/store/${storeId}?page=${page}&size=${size}`);
 };
 
 export const createCost = async (data: CreateCostRequest) => {

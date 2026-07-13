@@ -100,6 +100,10 @@ export default function StoreDetailPage() {
   const [categories, setCategories] = useState<CostCategory[]>([]);
   const [costsLoading, setCostsLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [costPage, setCostPage] = useState(1);
+  const [costTotalPages, setCostTotalPages] = useState(1);
+  const [costTotalItems, setCostTotalItems] = useState(0);
+  const costSize = 20;
 
   // form state for a new cost
   const [newCatId, setNewCatId] = useState<number | ''>('');
@@ -243,10 +247,10 @@ export default function StoreDetailPage() {
   useEffect(() => {
     if (storeId) {
       fetchData();
-      fetchCostData();
+      fetchCostData(costPage);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId]);
+  }, [storeId, costPage]);
 
   const fetchData = async () => {
     try {
@@ -261,14 +265,17 @@ export default function StoreDetailPage() {
     }
   };
 
-  const fetchCostData = async () => {
+  const fetchCostData = async (page = costPage) => {
     setCostsLoading(true);
     try {
       const [costRes, catRes] = await Promise.all([
-        getCostsByStore(storeId),
+        getCostsByStore(storeId, page, costSize),
         getCostCategories(),
       ]);
+      const payload = costRes?.data ?? costRes;
       setCosts(unwrapItems<Cost>(costRes));
+      setCostTotalPages(payload?.totalPages ?? payload?.totalPages ?? 1);
+      setCostTotalItems(payload?.total ?? payload?.total ?? costs.length);
       setCategories(unwrapItems<CostCategory>(catRes));
     } catch (err) {
       console.error('Failed to load costs:', err);
@@ -1180,6 +1187,32 @@ export default function StoreDetailPage() {
                       })}
                     </tbody>
                   </table>
+                  {costTotalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4 pt-2 border-t dark:border-gray-700">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        Tổng số: <b>{costTotalItems}</b> khoản chi phí
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCostPage(p => Math.max(1, p - 1))}
+                          disabled={costPage <= 1}
+                          className="px-3 py-1 text-xs border rounded-md disabled:opacity-40 dark:border-gray-600 dark:text-gray-300"
+                        >
+                          Trang trước
+                        </button>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Trang <b>{costPage}</b> / <b>{costTotalPages}</b>
+                        </span>
+                        <button
+                          onClick={() => setCostPage(p => Math.min(costTotalPages, p + 1))}
+                          disabled={costPage >= costTotalPages}
+                          className="px-3 py-1 text-xs border rounded-md disabled:opacity-40 dark:border-gray-600 dark:text-gray-300"
+                        >
+                          Trang sau
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </>
