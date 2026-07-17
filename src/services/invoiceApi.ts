@@ -3,6 +3,10 @@ import { invoiceApi } from './invoiceApiClient';
 export interface StoreInvoiceSettings {
   isExportInvoice: boolean;
   exportMode: number; // 0 = Individual, 1 = Merged
+  paymentMethodExportConfig?: string | null;
+  exportTimeFrom?: string | null;
+  exportTimeTo?: string | null;
+  isTimeRestricted?: boolean;
 }
 
 export interface InvoiceBrandDto {
@@ -22,6 +26,10 @@ export interface InvoiceStoreDto {
   isExportInvoice: boolean;
   exportMode: number;
   organizationName?: string;
+  paymentMethodExportConfig?: string | null;
+  exportTimeFrom?: string | null;
+  exportTimeTo?: string | null;
+  isTimeRestricted: boolean;
 }
 
 export const getInvoiceBrands = async () => {

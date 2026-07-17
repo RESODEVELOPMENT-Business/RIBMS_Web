@@ -63,6 +63,11 @@ const AppSidebar: React.FC = () => {
             name: "Loyalty",
             path: "/loyalty",
           },
+          {
+            icon: <BoxCubeIcon />,
+            name: "Special Offers",
+            path: "/special-offers",
+          },
         ];
 
       case "BrandManager":
@@ -92,6 +97,7 @@ const AppSidebar: React.FC = () => {
               { name: "Sản phẩm", path: "/products" },
               { name: "Danh mục", path: "/categories" },
               { name: "Khuyến mãi", path: "/promotions" },
+              { name: "Ưu đãi đặc biệt", path: "/special-offers" },
             ],
           },
           {

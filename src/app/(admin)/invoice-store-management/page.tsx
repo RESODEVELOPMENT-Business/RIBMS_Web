@@ -4,6 +4,45 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { getInvoiceBrands, getInvoiceStoresByBrandCode, updateStoreInvoiceSettings, triggerSyncBrandsAndStores, InvoiceBrandDto, InvoiceStoreDto } from '@/services/invoiceApi';
 
+const PAYMENT_TYPE_MAP: Record<number, { label: string; className: string }> = {
+  1: { label: 'Tiền mặt', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  2: { label: 'Chuyển khoản', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  3: { label: 'Grab Food', className: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' },
+  4: { label: 'Shopee Food', className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  5: { label: 'QR Code', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+};
+
+function PaymentMethodBadges({ config }: { config: string | null | undefined }) {
+  if (!config) {
+    return <span className="text-xs text-gray-400 italic">Tất cả</span>;
+  }
+  const types = config.split(',').map(Number).filter(n => !isNaN(n));
+  return (
+    <div className="flex flex-wrap gap-1">
+      {types.map(t => {
+        const info = PAYMENT_TYPE_MAP[t];
+        return (
+          <span key={t} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${info?.className ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>
+            {info?.label ?? `Type ${t}`}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function TimeWindowDisplay({ isRestricted, from, to }: { isRestricted: boolean; from: string | null | undefined; to: string | null | undefined }) {
+  if (!isRestricted) {
+    return <span className="text-xs text-gray-400 italic">Không giới hạn</span>;
+  }
+  const fmt = (t: string | null | undefined) => t ? t.substring(0, 5) : '--:--';
+  return (
+    <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300">
+      {fmt(from)} - {fmt(to)}
+    </span>
+  );
+}
+
 export default function InvoiceStoreManagementPage() {
   const router = useRouter();
   const [brands, setBrands] = useState<InvoiceBrandDto[]>([]);
@@ -179,6 +218,8 @@ export default function InvoiceStoreManagementPage() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Organization</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Xuất HĐ</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Chế độ</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Phương thức TT</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Khung giờ</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Actions</th>
                   </tr>
                 </thead>
@@ -212,6 +253,12 @@ export default function InvoiceStoreManagementPage() {
                             <option value={1}>Gộp (Merged)</option>
                             <option value={0}>Từng bill (Individual)</option>
                           </select>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          <PaymentMethodBadges config={s.paymentMethodExportConfig} />
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          <TimeWindowDisplay isRestricted={s.isTimeRestricted} from={s.exportTimeFrom} to={s.exportTimeTo} />
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                           <button

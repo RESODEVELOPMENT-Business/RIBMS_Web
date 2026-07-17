@@ -51,14 +51,18 @@ export default function LoyaltyAdminPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const searchCustomers = async (q: string) => {
+  const searchTimeout = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+  const searchCustomers = (q: string) => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
     if (q.length < 2) { setCustomerResults([]); return; }
     setSearching(true);
-    try {
-      const res = await api.get(`/admin/customers/search?q=${encodeURIComponent(q)}`);
-      setCustomerResults(res?.data || []);
-    } catch { setCustomerResults([]); }
-    finally { setSearching(false); }
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/admin/super-vip/customers/search?q=${encodeURIComponent(q)}`);
+        setCustomerResults(res?.data || []);
+      } catch { setCustomerResults([]); }
+      finally { setSearching(false); }
+    }, 1000);
   };
 
   const handleAdd = async () => {
