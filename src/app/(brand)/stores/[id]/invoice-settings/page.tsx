@@ -1,15 +1,17 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { invoiceApi } from '@/services/invoiceApiClient';
-import { updateStoreInvoiceSettings, StoreInvoiceSettings } from '@/services/invoiceApi';
+import { updateStoreInvoiceSettings, getPaymentTypesByBrandCode, StoreInvoiceSettings, PaymentTypeDto } from '@/services/invoiceApi';
 import { useAuthStore } from '@/store/authStore';
 
 export default function StoreInvoiceSettingsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const storeId = String(params.id);
+  const brandCodeFromQuery = searchParams.get('brandCode');
   const { user } = useAuthStore();
 
   // Guard: only Administrator can access
@@ -26,9 +28,16 @@ export default function StoreInvoiceSettingsPage() {
   const [isExportInvoice, setIsExportInvoice] = useState(true);
   const [exportMode, setExportMode] = useState<number>(1);
   const [paymentMethodExportConfig, setPaymentMethodExportConfig] = useState<string>('');
-  const [isTimeRestricted, setIsTimeRestricted] = useState(false);
-  const [exportTimeFrom, setExportTimeFrom] = useState<string>('06:00');
-  const [exportTimeTo, setExportTimeTo] = useState<string>('22:00');
+  const [exportTimeSlots, setExportTimeSlots] = useState<string[]>([]);
+  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeDto[]>([]);
+  const [loadingPaymentTypes, setLoadingPaymentTypes] = useState(false);
+
+  const TIME_SLOTS = [
+    { value: '6-10', label: '6:00 - 10:00' },
+    { value: '10-14', label: '10:00 - 14:00' },
+    { value: '14-18', label: '14:00 - 18:00' },
+    { value: '18-22', label: '18:00 - 22:00' },
+  ];
 
   useEffect(() => {
     if (storeId && user?.role === 'Administrator') {
@@ -46,15 +55,34 @@ export default function StoreInvoiceSettingsPage() {
         setIsExportInvoice(s.isExportInvoice !== false);
         setExportMode(s.exportMode ?? 1);
         setPaymentMethodExportConfig(s.paymentMethodExportConfig ?? '');
-        setIsTimeRestricted(s.isTimeRestricted ?? false);
-        setExportTimeFrom(s.exportTimeFrom ? s.exportTimeFrom.substring(0, 5) : '06:00');
-        setExportTimeTo(s.exportTimeTo ? s.exportTimeTo.substring(0, 5) : '22:00');
+        setExportTimeSlots(s.exportTimeSlots ? s.exportTimeSlots.split(',').map((t: string) => t.trim()).filter(Boolean) : []);
       }
     } catch (err) {
       console.error(err);
       toast.error('Không thể tải thông tin cửa hàng từ hệ thống invoice');
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (brandCodeFromQuery) {
+      loadPaymentTypes(brandCodeFromQuery);
+    } else if (store?.organizationName) {
+      // Fallback: try to derive brand name from store data
+    }
+  }, [brandCodeFromQuery, store]);
+
+  const loadPaymentTypes = async (code: string) => {
+    setLoadingPaymentTypes(true);
+    try {
+      const res = await getPaymentTypesByBrandCode(code);
+      setPaymentTypes(res?.data || []);
+    } catch (err) {
+      console.error(err);
+      setPaymentTypes([]);
+    } finally {
+      setLoadingPaymentTypes(false);
     }
   };
 
@@ -65,9 +93,7 @@ export default function StoreInvoiceSettingsPage() {
         isExportInvoice: isExportInvoice,
         exportMode: exportMode,
         paymentMethodExportConfig: paymentMethodExportConfig || null,
-        isTimeRestricted: isTimeRestricted,
-        exportTimeFrom: isTimeRestricted ? exportTimeFrom + ':00' : null,
-        exportTimeTo: isTimeRestricted ? exportTimeTo + ':00' : null,
+        exportTimeSlots: exportTimeSlots.length > 0 ? exportTimeSlots.join(',') : null,
       };
       const res = await updateStoreInvoiceSettings(storeId, payload);
       const status = res?.status ?? res?.data?.status;
@@ -212,13 +238,9 @@ export default function StoreInvoiceSettingsPage() {
                 Chọn các phương thức thanh toán cần xuất hóa đơn. Bỏ chọn tất cả = xuất tất cả.
               </div>
               <div className="flex flex-wrap gap-3">
-                {[
-                  { type: 1, label: 'Tiền mặt' },
-                  { type: 2, label: 'Chuyển khoản' },
-                  { type: 3, label: 'Grab Food' },
-                  { type: 4, label: 'Shopee Food' },
-                  { type: 5, label: 'QR Code' },
-                ].map(pm => {
+                {paymentTypes.length === 0 ? (
+                  <span className="text-xs text-gray-400 italic">{loadingPaymentTypes ? 'Đang tải...' : 'Không có phương thức thanh toán'}</span>
+                ) : paymentTypes.map(pm => {
                   const selected = paymentMethodExportConfig.split(',').map(Number).includes(pm.type);
                   return (
                     <label
@@ -244,57 +266,50 @@ export default function StoreInvoiceSettingsPage() {
                         }}
                         className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                       />
-                      {pm.label}
+                      {pm.name}
                     </label>
                   );
                 })}
               </div>
             </div>
 
-            {/* Time range */}
+            {/* Time slots */}
             <div className={`p-4 rounded-lg border ${isExportInvoice ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700/20 opacity-60'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">Giới hạn khung giờ xuất hóa đơn</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Bật để chỉ xuất hóa đơn trong khoảng thời gian nhất định trong ngày.
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isTimeRestricted}
-                    onChange={(e) => setIsTimeRestricted(e.target.checked)}
-                    disabled={!isExportInvoice}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-gray-600 peer-checked:bg-indigo-600"></div>
-                </label>
+              <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">Khung giờ xuất hóa đơn</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Chọn các khung giờ cho phép xuất hóa đơn. Đơn hàng phải qua 4h mới được xuất. Bỏ chọn tất cả = không giới hạn.
               </div>
-              {isTimeRestricted && (
-                <div className="flex items-center gap-3 mt-2">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Từ</label>
-                    <input
-                      type="time"
-                      value={exportTimeFrom}
-                      onChange={(e) => setExportTimeFrom(e.target.value)}
-                      disabled={!isExportInvoice}
-                      className="border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Đến</label>
-                    <input
-                      type="time"
-                      value={exportTimeTo}
-                      onChange={(e) => setExportTimeTo(e.target.value)}
-                      disabled={!isExportInvoice}
-                      className="border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              )}
+              <div className="flex flex-wrap gap-3">
+                {TIME_SLOTS.map(slot => {
+                  const selected = exportTimeSlots.includes(slot.value);
+                  return (
+                    <label
+                      key={slot.value}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all text-sm ${
+                        selected
+                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                          : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/30'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        disabled={!isExportInvoice}
+                        onChange={() => {
+                          setExportTimeSlots(prev =>
+                            selected ? prev.filter(v => v !== slot.value) : [...prev, slot.value]
+                          );
+                        }}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      />
+                      {slot.label}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">
+                Hệ thống chạy xuất hóa đơn vào các khung giờ: 10:00, 14:00, 18:00, 22:00 và 23:30 (force end-of-day).
+              </div>
             </div>
 
             {/* QR explanation */}

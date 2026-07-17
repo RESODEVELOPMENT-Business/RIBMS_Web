@@ -4,14 +4,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { getInvoiceBrands, getInvoiceStoresByBrandCode, updateStoreInvoiceSettings, triggerSyncBrandsAndStores, InvoiceBrandDto, InvoiceStoreDto } from '@/services/invoiceApi';
 
-const PAYMENT_TYPE_MAP: Record<number, { label: string; className: string }> = {
-  1: { label: 'Tiền mặt', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
-  2: { label: 'Chuyển khoản', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  3: { label: 'Grab Food', className: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' },
-  4: { label: 'Shopee Food', className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-  5: { label: 'QR Code', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
-};
-
 function PaymentMethodBadges({ config }: { config: string | null | undefined }) {
   if (!config) {
     return <span className="text-xs text-gray-400 italic">Tất cả</span>;
@@ -19,27 +11,34 @@ function PaymentMethodBadges({ config }: { config: string | null | undefined }) 
   const types = config.split(',').map(Number).filter(n => !isNaN(n));
   return (
     <div className="flex flex-wrap gap-1">
-      {types.map(t => {
-        const info = PAYMENT_TYPE_MAP[t];
-        return (
-          <span key={t} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${info?.className ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>
-            {info?.label ?? `Type ${t}`}
-          </span>
-        );
-      })}
+      {types.map(t => (
+        <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+          {t}
+        </span>
+      ))}
     </div>
   );
 }
 
-function TimeWindowDisplay({ isRestricted, from, to }: { isRestricted: boolean; from: string | null | undefined; to: string | null | undefined }) {
-  if (!isRestricted) {
-    return <span className="text-xs text-gray-400 italic">Không giới hạn</span>;
+function TimeSlotsDisplay({ slots }: { slots: string | null | undefined }) {
+  if (!slots) {
+    return <span className="text-xs text-gray-400 italic">Tất cả</span>;
   }
-  const fmt = (t: string | null | undefined) => t ? t.substring(0, 5) : '--:--';
+  const slotLabels: Record<string, string> = {
+    '6-10': '6h-10h',
+    '10-14': '10h-14h',
+    '14-18': '14h-18h',
+    '18-22': '18h-22h',
+  };
+  const list = slots.split(',').map(s => s.trim()).filter(Boolean);
   return (
-    <span className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300">
-      {fmt(from)} - {fmt(to)}
-    </span>
+    <div className="flex flex-wrap gap-1">
+      {list.map(s => (
+        <span key={s} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+          {slotLabels[s] ?? s}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -258,11 +257,11 @@ export default function InvoiceStoreManagementPage() {
                           <PaymentMethodBadges config={s.paymentMethodExportConfig} />
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          <TimeWindowDisplay isRestricted={s.isTimeRestricted} from={s.exportTimeFrom} to={s.exportTimeTo} />
+                          <TimeSlotsDisplay slots={s.exportTimeSlots} />
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                           <button
-                            onClick={() => router.push(`/stores/${s.id}/invoice-settings`)}
+                            onClick={() => router.push(`/stores/${s.id}/invoice-settings?brandCode=${selectedBrandCode}`)}
                             className="text-indigo-600 hover:underline dark:text-indigo-400"
                           >
                             Chi tiết

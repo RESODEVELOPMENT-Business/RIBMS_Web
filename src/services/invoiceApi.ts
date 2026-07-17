@@ -4,9 +4,7 @@ export interface StoreInvoiceSettings {
   isExportInvoice: boolean;
   exportMode: number; // 0 = Individual, 1 = Merged
   paymentMethodExportConfig?: string | null;
-  exportTimeFrom?: string | null;
-  exportTimeTo?: string | null;
-  isTimeRestricted?: boolean;
+  exportTimeSlots?: string | null;
 }
 
 export interface InvoiceBrandDto {
@@ -27,9 +25,7 @@ export interface InvoiceStoreDto {
   exportMode: number;
   organizationName?: string;
   paymentMethodExportConfig?: string | null;
-  exportTimeFrom?: string | null;
-  exportTimeTo?: string | null;
-  isTimeRestricted: boolean;
+  exportTimeSlots?: string | null;
 }
 
 export const getInvoiceBrands = async () => {
@@ -46,6 +42,15 @@ export const updateStoreInvoiceSettings = async (storeId: string, data: StoreInv
 
 export const triggerSyncBrandsAndStores = async () => {
   return await invoiceApi.post<{ data: { success: boolean; message: string; jobId: string } }>(`/jobs/trigger-sync-brands-and-stores`);
+};
+
+export interface PaymentTypeDto {
+  type: number;
+  name: string;
+}
+
+export const getPaymentTypesByBrandCode = async (brandCode: string) => {
+  return await invoiceApi.get<{ data: PaymentTypeDto[] }>(`/brands/${brandCode}/payment-types`);
 };
 
 export interface InvoiceStatisticsDto {
