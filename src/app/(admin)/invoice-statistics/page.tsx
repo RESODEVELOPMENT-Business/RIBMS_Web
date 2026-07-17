@@ -9,7 +9,10 @@ function formatCurrency(amount: number): string {
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 export default function InvoiceStatisticsPage() {
@@ -17,16 +20,17 @@ export default function InvoiceStatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState<string>(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 90); // Default 90 days to cover more data
+    d.setDate(1);
     return d.toISOString().split('T')[0];
   });
   const [toDate, setToDate] = useState<string>(() => {
     return new Date().toISOString().split('T')[0];
   });
+  const [expandedStore, setExpandedStore] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStatistics();
-  }, [fromDate, toDate]);
+  }, []);
 
   const fetchStatistics = async () => {
     setLoading(true);
@@ -163,33 +167,77 @@ export default function InvoiceStatisticsPage() {
             </div>
           </div>
 
-          {/* Top Stores */}
+          {/* Chi tiết theo Store */}
           <div className="bg-white rounded-lg shadow p-6 dark:bg-gray-800">
-            <h2 className="text-lg font-semibold mb-4 dark:text-white">Top 10 cửa hàng xuất HĐ nhiều nhất</h2>
+            <h2 className="text-lg font-semibold mb-4 dark:text-white">Chi tiết theo cửa hàng</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">#</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Mã cửa hàng</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Tên cửa hàng</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Số HĐ</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Tổng tiền HĐ</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Cửa hàng</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Tổng bill</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Doanh số</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Đã xuất</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Chưa xuất</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Đã xuất</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Chưa xuất</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {stats.topStores.map((s, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{idx + 1}</td>
-                      <td className="px-4 py-3 text-sm font-mono dark:text-gray-300">{s.storeCode}</td>
-                      <td className="px-4 py-3 text-sm font-medium dark:text-gray-200">{s.storeName}</td>
-                      <td className="px-4 py-3 text-sm text-right dark:text-gray-300">{s.invoiceCount.toLocaleString('vi-VN')}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium dark:text-gray-200">{formatCurrency(s.invoicedAmount)}</td>
-                    </tr>
-                  ))}
+                  {stats.topStores.map((s) => {
+                    const isExpanded = expandedStore === s.storeCode;
+                    return (
+                      <React.Fragment key={s.storeCode}>
+                        <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-4 py-3 text-sm">
+                            <div className="font-medium dark:text-gray-200">{s.storeName}</div>
+                            <div className="text-xs text-gray-500 font-mono">{s.storeCode}</div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right dark:text-gray-300">{s.totalOrders.toLocaleString('vi-VN')}</td>
+                          <td className="px-4 py-3 text-sm text-right font-medium dark:text-gray-200">{formatCurrency(s.totalSales)}</td>
+                          <td className="px-4 py-3 text-sm text-right text-emerald-600 font-medium">{formatCurrency(s.invoicedAmount)}</td>
+                          <td className="px-4 py-3 text-sm text-right text-amber-600 font-medium">{formatCurrency(s.uninvoicedAmount)}</td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                              {s.exportedOrderCount}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            {s.unexportedOrderCount > 0 ? (
+                              <button
+                                onClick={() => setExpandedStore(isExpanded ? null : s.storeCode)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+                              >
+                                {s.unexportedOrderCount}
+                                <svg className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                            ) : (
+                              <span className="text-xs text-gray-400">0</span>
+                            )}
+                          </td>
+                        </tr>
+                        {isExpanded && s.unexportedOrderCodes && s.unexportedOrderCodes.length > 0 && (
+                          <tr className="bg-amber-50/50 dark:bg-amber-900/10">
+                            <td colSpan={7} className="px-4 py-3">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Mã đơn chưa xuất hóa đơn:</div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {s.unexportedOrderCodes.map((code, i) => (
+                                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                    {code}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                   {stats.topStores.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Không có dữ liệu</td>
+                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">Không có dữ liệu</td>
                     </tr>
                   )}
                 </tbody>

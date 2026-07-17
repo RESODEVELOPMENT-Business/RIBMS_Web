@@ -80,6 +80,12 @@ export interface StoreStatisticsDto {
   storeCode: string;
   invoicedAmount: number;
   invoiceCount: number;
+  totalOrders: number;
+  totalSales: number;
+  uninvoicedAmount: number;
+  exportedOrderCount: number;
+  unexportedOrderCount: number;
+  unexportedOrderCodes?: string[];
 }
 
 export const getInvoiceStatistics = async (fromDate?: string, toDate?: string) => {
