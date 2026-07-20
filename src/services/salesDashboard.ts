@@ -529,3 +529,48 @@ export const getDailyOperationsReport = async (
   const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
   return await apiClient(`/orders/dashboard/daily-operations-report?${qs}`);
 };
+
+// ── Weekly 9-weeks breakdown ──────────────────────────────────────
+
+export interface WeekHeader {
+  weekKey: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface StoreWeeklyRow {
+  storeId: number;
+  storeName: string;
+  revenueByWeek: number[];
+  invoiceCountByWeek: number[];
+  avgBillByWeek: number[];
+}
+
+export interface WeeklyTotalsRow {
+  revenueByWeek: number[];
+  invoiceCountByWeek: number[];
+  avgBillByWeek: number[];
+}
+
+export interface WeeklyBreakdownData {
+  weeks: WeekHeader[];
+  stores: StoreWeeklyRow[];
+  totals: WeeklyTotalsRow;
+}
+
+export const getWeeklyBreakdown = async (
+  brandId?: number | null,
+  fromDate?: string,
+  toDate?: string,
+  storeIds?: number[] | null,
+) => {
+  const params = new URLSearchParams();
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  if (storeIds && storeIds.length > 0) {
+    storeIds.forEach((id) => params.append('storeIds', id.toString()));
+  }
+  return await apiClient(`/orders/dashboard/weekly-breakdown?${params.toString()}`);
+};

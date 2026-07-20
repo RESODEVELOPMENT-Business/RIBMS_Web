@@ -238,7 +238,7 @@ export default function SpecialOfferDetailPage() {
               <InfoRow label="Max Per Customer" value={offer.maxUsagePerCustomer?.toString() || '—'} />
               <InfoRow label="Max Per Day" value={offer.maxUsagePerDay?.toString() || '—'} />
               <InfoRow label="Max Per Store" value={offer.maxUsagePerStore?.toString() || '—'} />
-              <InfoRow label="Stores" value={(offer.storeNames?.length > 0 ? offer.storeNames.join(', ') : 'All')} />
+              <InfoRow label="Stores" value={(offer.storeIds?.length > 0 ? offer.storeIds.join(', ') : 'All')} />
             </div>
             {offer.description && <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800"><InfoRow label="Description" value={offer.description} /></div>}
           </div>

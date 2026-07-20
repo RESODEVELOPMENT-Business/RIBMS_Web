@@ -63,10 +63,10 @@ export default function SpecialOfferListPage() {
       },
     },
     {
-      accessorKey: 'storeNames',
+      accessorKey: 'storeIds',
       header: 'Stores',
       cell: ({ row }) => {
-        const stores: string[] = row.original.storeNames || [];
+        const stores: number[] = row.original.storeIds || [];
         return <span className="text-xs text-gray-600 dark:text-gray-400">{stores.length > 0 ? stores.join(', ') : 'All'}</span>;
       },
     },

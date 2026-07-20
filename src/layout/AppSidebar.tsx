@@ -86,6 +86,7 @@ const AppSidebar: React.FC = () => {
               { name: "Vận hành theo ngày", path: "/sales-dashboard/daily-operations" },
               { name: "Khách hàng & Marketing", path: "/sales-dashboard/customer-marketing-report" },
               { name: "Doanh thu cửa hàng", path: "/sales-dashboard/top-store-revenues" },
+              { name: "Bảng 9 tuần", path: "/sales-dashboard/weekly-9weeks" },
               { name: "Doanh thu theo thanh toán", path: "/sales-dashboard/store-payment-methods" },
               { name: "Đơn hàng", path: "/orders" },
             ],
@@ -98,6 +99,7 @@ const AppSidebar: React.FC = () => {
               { name: "Danh mục", path: "/categories" },
               { name: "Khuyến mãi", path: "/promotions" },
               { name: "Ưu đãi đặc biệt", path: "/special-offers" },
+              { name: "Tích Stamp", path: "/stamp-programs" },
             ],
           },
           {
@@ -132,6 +134,7 @@ const AppSidebar: React.FC = () => {
               { name: "Vận hành theo ngày", path: "/store/sales-dashboard/daily-operations" },
               { name: "Khách hàng & Marketing", path: "/store/sales-dashboard/customer-marketing-report" },
               { name: "Doanh thu cửa hàng", path: "/store/sales-dashboard/top-store-revenues" },
+              { name: "Bảng 9 tuần", path: "/store/sales-dashboard/weekly-9weeks" },
               { name: "Doanh thu theo thanh toán", path: "/store/sales-dashboard/store-payment-methods" },
             ],
           },
