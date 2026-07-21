@@ -124,8 +124,22 @@ export default function Weekly9WeeksPage() {
     return 'text-gray-500 dark:text-gray-400';
   };
 
+  // ── Helper ──
+  const parseWeekLabel = (label: string) => {
+    const match = label.match(/^(.*?)\s*(\(.*\))$/);
+    if (match) {
+      return { title: match[1].trim(), dateRange: match[2].trim() };
+    }
+    return { title: label, dateRange: '' };
+  };
+
   // ── Chart config ──
-  const chartCategories = useMemo(() => data?.weeks.map((w) => w.label) ?? [], [data]);
+  const chartCategories = useMemo(() => {
+    return data?.weeks.map((w) => {
+      const { title, dateRange } = parseWeekLabel(w.label);
+      return dateRange ? [title, dateRange] : w.label;
+    }) ?? [];
+  }, [data]);
   const chartSeries = useMemo(() => {
     if (!data) return [];
     return [
@@ -324,14 +338,24 @@ export default function Weekly9WeeksPage() {
                     <th className="sticky left-0 bg-gray-50 dark:bg-gray-800/50 z-10 px-4 py-3 text-left font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[220px]">
                       Tên cửa hàng
                     </th>
-                    {data.weeks.map((w) => (
-                      <th
-                        key={w.weekKey}
-                        className="px-4 py-3 text-right font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-[11px] min-w-[130px]"
-                      >
-                        {w.label}
-                      </th>
-                    ))}
+                    {data.weeks.map((w) => {
+                      const { title, dateRange } = parseWeekLabel(w.label);
+                      return (
+                        <th
+                          key={w.weekKey}
+                          className="px-3 py-2.5 text-center font-bold text-gray-500 dark:text-gray-400 text-[11px] min-w-[120px]"
+                        >
+                          <div className="flex flex-col items-center justify-center leading-tight">
+                            <span>{title}</span>
+                            {dateRange && (
+                              <span className="font-normal text-gray-400 dark:text-gray-500 text-[10px] mt-0.5">
+                                {dateRange}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
