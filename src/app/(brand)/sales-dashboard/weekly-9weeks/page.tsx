@@ -335,7 +335,7 @@ export default function Weekly9WeeksPage() {
               <table className="min-w-full text-sm divide-y divide-gray-100 dark:divide-gray-800">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-gray-800/50">
-                    <th className="sticky left-0 bg-gray-50 dark:bg-gray-800/50 z-10 px-4 py-3 text-left font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[220px]">
+                    <th className="sticky left-0 bg-gray-50 dark:bg-gray-800/50 z-10 px-3 py-3 text-left font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[170px]">
                       Tên cửa hàng
                     </th>
                     {data.weeks.map((w) => {
@@ -343,7 +343,7 @@ export default function Weekly9WeeksPage() {
                       return (
                         <th
                           key={w.weekKey}
-                          className="px-3 py-2.5 text-center font-bold text-gray-500 dark:text-gray-400 text-[11px] min-w-[120px]"
+                          className="px-1.5 py-2.5 text-center font-bold text-gray-500 dark:text-gray-400 text-[11px] min-w-[90px]"
                         >
                           <div className="flex flex-col items-center justify-center leading-tight">
                             <span>{title}</span>
@@ -364,7 +364,7 @@ export default function Weekly9WeeksPage() {
                       key={store.storeId}
                       className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors"
                     >
-                      <td className="sticky left-0 bg-white dark:bg-gray-900 z-10 px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">
+                      <td className="sticky left-0 bg-white dark:bg-gray-900 z-10 px-3 py-2.5 font-semibold text-gray-700 dark:text-gray-200">
                         {store.storeName}
                       </td>
                       {data.weeks.map((_w, i) => {
@@ -373,7 +373,7 @@ export default function Weekly9WeeksPage() {
                         return (
                           <td
                             key={_w.weekKey}
-                            className={`px-4 py-2.5 text-right font-medium ${getTrendColor(val, prev)}`}
+                            className={`px-1.5 py-2.5 text-right font-medium whitespace-nowrap ${getTrendColor(val, prev)}`}
                           >
                             {formatMetric(val, activeTab)}
                           </td>
@@ -383,7 +383,7 @@ export default function Weekly9WeeksPage() {
                   ))}
                   {/* Totals row */}
                   <tr className="bg-brand-50/50 dark:bg-brand-950/10 font-bold">
-                    <td className="sticky left-0 bg-brand-50/50 dark:bg-brand-950/10 z-10 px-4 py-3 text-brand-700 dark:text-brand-300 uppercase tracking-wider text-xs">
+                    <td className="sticky left-0 bg-brand-50/50 dark:bg-brand-950/10 z-10 px-3 py-3 text-brand-700 dark:text-brand-300 uppercase tracking-wider text-xs">
                       Tổng
                     </td>
                     {data.weeks.map((_w, i) => {
@@ -392,7 +392,7 @@ export default function Weekly9WeeksPage() {
                       return (
                         <td
                           key={_w.weekKey}
-                          className={`px-4 py-3 text-right font-extrabold ${getTrendColor(val, prev)}`}
+                          className={`px-1.5 py-3 text-right font-extrabold whitespace-nowrap ${getTrendColor(val, prev)}`}
                         >
                           {formatMetric(val, activeTab)}
                         </td>
