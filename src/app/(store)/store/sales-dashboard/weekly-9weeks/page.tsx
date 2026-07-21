@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
+import { ApexOptions } from 'apexcharts';
 import {
   getWeeklyBreakdown,
   WeeklyBreakdownData,
@@ -15,6 +17,8 @@ import {
   exportSheetsToExcel,
 } from '../utils/excelExport';
 
+const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
+
 const formatVND = (v: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v || 0);
 const formatNumber = (v: number) => new Intl.NumberFormat('vi-VN').format(v || 0);
@@ -26,6 +30,12 @@ const TABS: { key: MetricTab; label: string; icon?: React.ReactNode }[] = [
   { key: 'invoiceCount', label: 'Số lượng bill', icon: <TaskIcon className="w-4 h-4" /> },
   { key: 'avgBill', label: 'Trung bình bill', icon: <ListIcon className="w-4 h-4" /> },
 ];
+
+const CHART_COLORS: Record<MetricTab, string> = {
+  revenue: '#10b981',
+  invoiceCount: '#6366f1',
+  avgBill: '#f59e0b',
+};
 
 export default function StoreWeekly9WeeksPage() {
   const { storeId, fromDate, toDate, setDateRange } = useStoreDashboardFilters(63);
@@ -77,12 +87,16 @@ export default function StoreWeekly9WeeksPage() {
       : formatVND(value);
   };
 
+  const getTrendColor = (current: number, previous: number | null): string => {
+    if (previous === null) return 'text-gray-500 dark:text-gray-400';
+    if (current > previous) return 'text-green-600 dark:text-green-400';
+    if (current < previous) return 'text-red-600 dark:text-red-400';
+    return 'text-gray-500 dark:text-gray-400';
+  };
+
   const handleExport = () => {
     if (!data || data.stores.length === 0) return;
     const storeName = data.stores[0]?.storeName;
-
-    const headerRow: Record<string, any> = { Tuần: '' };
-    data.weeks.forEach((w) => { headerRow[w.label] = ''; });
 
     const sheets = TABS.map((tab) => {
       const rows = data.stores.map((store) => {
@@ -105,6 +119,72 @@ export default function StoreWeekly9WeeksPage() {
 
     exportSheetsToExcel('Bang9Tuan', sheets);
   };
+
+  // ── Chart ──
+  const chartCategories = useMemo(() => data?.weeks.map((w) => w.label) ?? [], [data]);
+  const storeRow = data?.stores[0];
+  const chartSeries = useMemo(() => {
+    if (!storeRow) return [];
+    return [
+      {
+        name: TABS.find((t) => t.key === activeTab)?.label ?? '',
+        data: storeRow.revenueByWeek.map((_, i) => getMetricValue(storeRow, i, activeTab)),
+      },
+    ];
+  }, [storeRow, activeTab]);
+
+  const chartOptions: ApexOptions = useMemo(() => ({
+    colors: [CHART_COLORS[activeTab]],
+    chart: {
+      fontFamily: 'Outfit, sans-serif',
+      type: 'bar',
+      height: 260,
+      toolbar: { show: false },
+      animations: { enabled: true, dynamicAnimation: { speed: 350 } },
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '50%',
+        borderRadius: 6,
+        borderRadiusApplication: 'end',
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      offsetY: -6,
+      style: { fontSize: '11px', fontWeight: 600, colors: ['#6b7280'] },
+      formatter: (val: number) =>
+        activeTab === 'revenue' ? formatVND(val) : formatNumber(val),
+    },
+    stroke: { show: false },
+    xaxis: {
+      categories: chartCategories,
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      labels: { style: { fontSize: '12px', fontWeight: 500 } },
+    },
+    yaxis: {
+      labels: {
+        formatter: (val: number) =>
+          activeTab === 'revenue'
+            ? (val >= 1_000_000 ? `${(val / 1_000_000).toFixed(1)}M` : formatVND(val))
+            : formatNumber(val),
+      },
+    },
+    grid: {
+      borderColor: '#e5e7eb',
+      strokeDashArray: 4,
+      yaxis: { lines: { show: true } },
+    },
+    tooltip: {
+      y: {
+        formatter: (val: number) =>
+          activeTab === 'revenue' ? formatVND(val) : formatNumber(val),
+      },
+    },
+    fill: { opacity: 1, type: 'gradient' as const, gradient: { shade: 'light' as const, type: 'vertical' as const, opacityFrom: 1, opacityTo: 0.85 } },
+  }), [activeTab, chartCategories]);
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-6 text-gray-800 dark:text-gray-100">
@@ -157,8 +237,43 @@ export default function StoreWeekly9WeeksPage() {
             ))}
           </div>
 
+          {/* Bar chart */}
+          {chartSeries.length > 0 && chartCategories.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-base font-bold text-gray-700 dark:text-gray-200">
+                  Biểu đồ theo tuần
+                </h2>
+                <span className="text-xs text-gray-400">
+                  {data.stores[0]?.storeName} &middot; {chartCategories.length} tuần
+                </span>
+              </div>
+              <ReactApexChart
+                options={chartOptions}
+                series={chartSeries}
+                type="bar"
+                height={260}
+              />
+            </div>
+          )}
+
           {/* Matrix table */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 text-xs text-gray-400">
+              <span>So sánh tuần liền kề:</span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
+                Tăng
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+                Giảm
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block" />
+                Bằng / Tuần đầu
+              </span>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm divide-y divide-gray-100 dark:divide-gray-800">
                 <thead>
@@ -184,16 +299,11 @@ export default function StoreWeekly9WeeksPage() {
                       </td>
                       {data.weeks.map((_w, i) => {
                         const val = getMetricValue(data.stores[0], i, activeTab);
+                        const prev = i > 0 ? getMetricValue(data.stores[0], i - 1, activeTab) : null;
                         return (
                           <td
                             key={_w.weekKey}
-                            className={`px-4 py-2.5 text-right font-medium ${
-                              activeTab === 'revenue'
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : activeTab === 'invoiceCount'
-                                  ? 'text-blue-600 dark:text-blue-400'
-                                  : 'text-amber-600 dark:text-amber-400'
-                            }`}
+                            className={`px-4 py-2.5 text-right font-medium ${getTrendColor(val, prev)}`}
                           >
                             {formatMetric(val, activeTab)}
                           </td>

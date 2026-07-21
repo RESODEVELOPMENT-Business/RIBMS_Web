@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
+import { ApexOptions } from 'apexcharts';
 import {
   getWeeklyBreakdown,
   WeeklyBreakdownData,
@@ -15,6 +17,8 @@ import {
   exportSheetsToExcel,
 } from '../utils/excelExport';
 
+const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
+
 const formatVND = (v: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v || 0);
 const formatNumber = (v: number) => new Intl.NumberFormat('vi-VN').format(v || 0);
@@ -27,8 +31,14 @@ const TABS: { key: MetricTab; label: string; icon?: React.ReactNode }[] = [
   { key: 'avgBill', label: 'Trung bình bill', icon: <ListIcon className="w-4 h-4" /> },
 ];
 
+const CHART_COLORS: Record<MetricTab, string> = {
+  revenue: '#10b981',
+  invoiceCount: '#6366f1',
+  avgBill: '#f59e0b',
+};
+
 export default function Weekly9WeeksPage() {
-  const filters = useDashboardFilters(63); // default: 9 weeks back
+  const filters = useDashboardFilters(63);
   const {
     stores,
     storesLoading,
@@ -39,13 +49,11 @@ export default function Weekly9WeeksPage() {
     resolveBrandId,
   } = filters;
 
-  // Multi-select store IDs
   const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
   const [data, setData] = useState<WeeklyBreakdownData | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<MetricTab>('revenue');
 
-  // When single-store filter changes → sync to multi-select
   useEffect(() => {
     if (selectedStoreId && !selectedStoreIds.includes(selectedStoreId as number)) {
       setSelectedStoreIds([selectedStoreId as number]);
@@ -104,22 +112,90 @@ export default function Weekly9WeeksPage() {
   };
 
   const formatMetric = (value: number, tab: MetricTab): string => {
-    return tab === 'invoiceCount' || tab === 'avgBill' && value < 100000
+    return tab === 'invoiceCount' || (tab === 'avgBill' && value < 100000)
       ? formatNumber(value)
       : formatVND(value);
   };
 
+  const getTrendColor = (current: number, previous: number | null): string => {
+    if (previous === null) return 'text-gray-500 dark:text-gray-400';
+    if (current > previous) return 'text-green-600 dark:text-green-400';
+    if (current < previous) return 'text-red-600 dark:text-red-400';
+    return 'text-gray-500 dark:text-gray-400';
+  };
+
+  // ── Chart config ──
+  const chartCategories = useMemo(() => data?.weeks.map((w) => w.label) ?? [], [data]);
+  const chartSeries = useMemo(() => {
+    if (!data) return [];
+    return [
+      {
+        name: TABS.find((t) => t.key === activeTab)?.label ?? '',
+        data: data.totals.revenueByWeek.map((_, i) => getTotalValue(i, activeTab)),
+      },
+    ];
+  }, [data, activeTab]);
+
+  const chartOptions: ApexOptions = useMemo(() => ({
+    colors: [CHART_COLORS[activeTab]],
+    chart: {
+      fontFamily: 'Outfit, sans-serif',
+      type: 'bar',
+      height: 280,
+      toolbar: { show: false },
+      animations: { enabled: true, dynamicAnimation: { speed: 350 } },
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '50%',
+        borderRadius: 6,
+        borderRadiusApplication: 'end',
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      offsetY: -6,
+      style: { fontSize: '11px', fontWeight: 600, colors: ['#6b7280'] },
+      formatter: (val: number) =>
+        activeTab === 'revenue'
+          ? formatVND(val)
+          : formatNumber(val),
+    },
+    stroke: { show: false },
+    xaxis: {
+      categories: chartCategories,
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      labels: { style: { fontSize: '12px', fontWeight: 500 } },
+    },
+    yaxis: {
+      labels: {
+        formatter: (val: number) =>
+          activeTab === 'revenue'
+            ? (val >= 1_000_000 ? `${(val / 1_000_000).toFixed(1)}M` : formatVND(val))
+            : formatNumber(val),
+      },
+    },
+    grid: {
+      borderColor: '#e5e7eb',
+      strokeDashArray: 4,
+      yaxis: { lines: { show: true } },
+    },
+    tooltip: {
+      y: {
+        formatter: (val: number) =>
+          activeTab === 'revenue' ? formatVND(val) : formatNumber(val),
+      },
+    },
+    fill: { opacity: 1, type: 'gradient' as const, gradient: { shade: 'light' as const, type: 'vertical' as const, opacityFrom: 1, opacityTo: 0.85 } },
+  }), [activeTab, chartCategories]);
+
   const handleExport = () => {
     if (!data) return;
-    const storeName = undefined; // multi-store, skip single store name
+    const storeName = undefined;
 
-    // 3 sheets — one per metric
     const sheets = TABS.map((tab) => {
-      const headerRow: Record<string, any> = { 'Cửa hàng': 'Cửa hàng' };
-      data.weeks.forEach((w, i) => {
-        headerRow[w.label] = '';
-      });
-
       const dataRows = data.stores.map((store) => {
         const row: Record<string, any> = { 'Cửa hàng': store.storeName };
         data.weeks.forEach((_w, i) => {
@@ -146,14 +222,6 @@ export default function Weekly9WeeksPage() {
 
     exportSheetsToExcel('Bảng9Tuần', sheets);
   };
-
-  // ── Derived totals for KPIs ──
-  const totals9Weeks = useMemo(() => {
-    if (!data?.totals) return { revenue: 0, invoices: 0, avgBill: 0 };
-    const rev = data.totals.revenueByWeek.reduce((a, b) => a + b, 0);
-    const inv = data.totals.invoiceCountByWeek.reduce((a, b) => a + b, 0);
-    return { revenue: rev, invoices: inv, avgBill: inv > 0 ? Math.round(rev / inv) : 0 };
-  }, [data]);
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-6 text-gray-800 dark:text-gray-100">
@@ -194,27 +262,6 @@ export default function Weekly9WeeksPage() {
         </div>
       ) : (
         <>
-          {/* KPI cards */}
-          {data.stores.length > 1 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <KpiCard
-                label="Tổng doanh thu (9 tuần)"
-                value={formatVND(totals9Weeks.revenue)}
-                accent="emerald"
-              />
-              <KpiCard
-                label="Tổng số bill (9 tuần)"
-                value={formatNumber(totals9Weeks.invoices)}
-                accent="indigo"
-              />
-              <KpiCard
-                label="TB bill (9 tuần)"
-                value={formatVND(totals9Weeks.avgBill)}
-                accent="amber"
-              />
-            </div>
-          )}
-
           {/* Tab bar */}
           <div className="flex flex-wrap gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-1 shadow-sm">
             {TABS.map((tab) => (
@@ -233,8 +280,43 @@ export default function Weekly9WeeksPage() {
             ))}
           </div>
 
+          {/* Bar chart */}
+          {chartSeries.length > 0 && chartCategories.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-base font-bold text-gray-700 dark:text-gray-200">
+                  Biểu đồ tổng theo tuần
+                </h2>
+                <span className="text-xs text-gray-400">
+                  Tổng {chartCategories.length} tuần
+                </span>
+              </div>
+              <ReactApexChart
+                options={chartOptions}
+                series={chartSeries}
+                type="bar"
+                height={280}
+              />
+            </div>
+          )}
+
           {/* Matrix table */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 text-xs text-gray-400">
+              <span>So sánh tuần liền kề:</span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
+                Tăng
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+                Giảm
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block" />
+                Bằng / Tuần đầu
+              </span>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm divide-y divide-gray-100 dark:divide-gray-800">
                 <thead>
@@ -263,16 +345,11 @@ export default function Weekly9WeeksPage() {
                       </td>
                       {data.weeks.map((_w, i) => {
                         const val = getMetricValue(store, i, activeTab);
+                        const prev = i > 0 ? getMetricValue(store, i - 1, activeTab) : null;
                         return (
                           <td
                             key={_w.weekKey}
-                            className={`px-4 py-2.5 text-right font-medium ${
-                              activeTab === 'revenue'
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : activeTab === 'invoiceCount'
-                                  ? 'text-blue-600 dark:text-blue-400'
-                                  : 'text-amber-600 dark:text-amber-400'
-                            }`}
+                            className={`px-4 py-2.5 text-right font-medium ${getTrendColor(val, prev)}`}
                           >
                             {formatMetric(val, activeTab)}
                           </td>
@@ -287,16 +364,11 @@ export default function Weekly9WeeksPage() {
                     </td>
                     {data.weeks.map((_w, i) => {
                       const val = getTotalValue(i, activeTab);
+                      const prev = i > 0 ? getTotalValue(i - 1, activeTab) : null;
                       return (
                         <td
                           key={_w.weekKey}
-                          className={`px-4 py-3 text-right font-extrabold ${
-                            activeTab === 'revenue'
-                              ? 'text-emerald-700 dark:text-emerald-300'
-                              : activeTab === 'invoiceCount'
-                                ? 'text-blue-700 dark:text-blue-300'
-                                : 'text-amber-700 dark:text-amber-300'
-                          }`}
+                          className={`px-4 py-3 text-right font-extrabold ${getTrendColor(val, prev)}`}
                         >
                           {formatMetric(val, activeTab)}
                         </td>
@@ -309,31 +381,6 @@ export default function Weekly9WeeksPage() {
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-// ── KPI Card component ────────────────────────────────────────────
-
-function KpiCard({
-  label,
-  value,
-  accent = 'brand',
-}: {
-  label: string;
-  value: string;
-  accent?: 'brand' | 'emerald' | 'indigo' | 'amber';
-}) {
-  const accentMap: Record<string, string> = {
-    brand: 'text-brand-600 dark:text-brand-400',
-    emerald: 'text-emerald-600 dark:text-emerald-400',
-    indigo: 'text-indigo-600 dark:text-indigo-400',
-    amber: 'text-amber-600 dark:text-amber-400',
-  };
-  return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-      <div className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">{label}</div>
-      <div className={`mt-2 text-2xl font-extrabold ${accentMap[accent]}`}>{value}</div>
     </div>
   );
 }
