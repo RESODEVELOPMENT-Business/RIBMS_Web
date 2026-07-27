@@ -120,13 +120,15 @@ export default function StoreOperationsReportPage() {
               {data.shiftPerformance.map((s, idx) => {
                 const gradients = ['from-amber-500 to-orange-500', 'from-emerald-500 to-teal-500', 'from-indigo-500 to-blue-500', 'from-rose-500 to-pink-500'];
                 const g = gradients[idx % gradients.length];
-                const timeFrame = s.shiftCode === 'SH01' ? '06h-10h' : s.shiftCode === 'SH02' ? '10h-14h' : s.shiftCode === 'SH03' ? '14h-18h' : '18h-22h';
+                const shiftTitle = s.shiftCode ? (s.shiftCode.startsWith('Ca') ? s.shiftCode : `Ca ${s.shiftCode}`) : '';
                 return (
                   <div key={s.shiftCode} className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{s.shiftName}</div>
-                        <div className="text-xs font-bold text-gray-900 dark:text-white">{timeFrame}</div>
+                        {shiftTitle && (
+                          <div className="text-xs text-gray-400 dark:text-gray-500 mb-0.5">{shiftTitle}</div>
+                        )}
+                        <div className="text-xs font-bold text-gray-900 dark:text-white">{s.shiftName}</div>
                       </div>
                       <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{s.sharePercent.toFixed(1)}%</span>
                     </div>

@@ -49,13 +49,13 @@ export default function StoreProfitReportPage() {
     const summaryRows = [
       { 'Chỉ số': 'Doanh thu gộp', 'Giá trị (VND)': data.grossSales },
       { 'Chỉ số': 'Tổng giảm giá', 'Giá trị (VND)': data.totalDiscount },
-      { 'Chỉ số': 'Doanh thu thuần', 'Giá trị (VND)': data.netSales },
-      { 'Chỉ số': 'COGS', 'Giá trị (VND)': data.cogs },
-      { 'Chỉ số': 'Lợi nhuận gộp', 'Giá trị (VND)': data.grossProfit },
-      { 'Chỉ số': 'Gross margin (%)', 'Giá trị (%)': data.grossMargin },
-      { 'Chỉ số': 'Tổng chi phí vận hành', 'Giá trị (VND)': data.operatingCostTotal },
-      { 'Chỉ số': 'Lợi nhuận ròng', 'Giá trị (VND)': data.netProfit },
-      { 'Chỉ số': 'Net margin (%)', 'Giá trị (%)': data.netMargin },
+      { 'Chỉ số': 'Doanh thu sau giảm', 'Giá trị (VND)': data.netSales },
+      { 'Chỉ số': 'COGS', 'Giá trị (VND)': data.sauGiam.cogs },
+      { 'Chỉ số': 'Lợi nhuận gộp', 'Giá trị (VND)': data.sauGiam.grossProfit },
+      { 'Chỉ số': 'Gross margin (%)', 'Giá trị (%)': data.sauGiam.grossMargin },
+      { 'Chỉ số': 'Tổng chi phí vận hành', 'Giá trị (VND)': data.sauGiam.operatingCostTotal },
+      { 'Chỉ số': 'Lợi nhuận ròng', 'Giá trị (VND)': data.sauGiam.netProfit },
+      { 'Chỉ số': 'Net margin (%)', 'Giá trị (%)': data.sauGiam.netMargin },
     ] as Record<string, any>[];
 
     const productRows = (rows: typeof data.topProfitableProducts) =>
@@ -80,7 +80,7 @@ export default function StoreProfitReportPage() {
       { name: 'Tóm tắt', rows: summaryRows },
       {
         name: 'Chi phí vận hành',
-        rows: data.operatingCosts.map((c) => ({
+        rows: data.sauGiam.operatingCosts.map((c) => ({
           'Loại chi phí': c.categoryName,
           'Số mục': c.costCount,
           'Tổng (VND)': c.total,
@@ -148,17 +148,17 @@ export default function StoreProfitReportPage() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />} label="Doanh thu thuần" value={formatVND(data.netSales)} subValue={`Gross: ${formatVND(data.grossSales)}`} accent="indigo" />
-            <KpiCard icon={<PieChartIcon className="w-5 h-5" />} label="COGS" value={formatVND(data.cogs)} subValue="Σ priceCogs × qty" accent="amber" />
-            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />} label="Lợi nhuận gộp" value={formatVND(data.grossProfit)} subValue={`Margin: ${data.grossMargin.toFixed(2)}%`} accent={data.grossProfit >= 0 ? 'emerald' : 'rose'} />
-            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />} label="Lợi nhuận ròng" value={formatVND(data.netProfit)} subValue={`Margin: ${data.netMargin.toFixed(2)}%`} accent={data.netProfit >= 0 ? 'emerald' : 'rose'} />
+            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />} label="Doanh thu sau giảm" value={formatVND(data.netSales)} subValue={`Gross: ${formatVND(data.grossSales)}`} accent="indigo" />
+            <KpiCard icon={<PieChartIcon className="w-5 h-5" />} label="COGS" value={formatVND(data.sauGiam.cogs)} subValue="Σ priceCogs × qty" accent="amber" />
+            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />} label="Lợi nhuận gộp" value={formatVND(data.sauGiam.grossProfit)} subValue={`Margin: ${data.sauGiam.grossMargin.toFixed(2)}%`} accent={data.sauGiam.grossProfit >= 0 ? 'emerald' : 'rose'} />
+            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />} label="Lợi nhuận ròng" value={formatVND(data.sauGiam.netProfit)} subValue={`Margin: ${data.sauGiam.netMargin.toFixed(2)}%`} accent={data.sauGiam.netProfit >= 0 ? 'emerald' : 'rose'} />
           </div>
 
-          {data.operatingCosts.length > 0 && (
+          {data.sauGiam.operatingCosts.length > 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold">Chi phí vận hành theo loại</h2>
-                <span className="text-xs text-gray-400">Tổng: {formatVND(data.operatingCostTotal)} • {data.operatingCosts.length} danh mục</span>
+                <span className="text-xs text-gray-400">Tổng: {formatVND(data.sauGiam.operatingCostTotal)} • {data.sauGiam.operatingCosts.length} danh mục</span>
               </div>
               <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
                 <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
@@ -172,7 +172,7 @@ export default function StoreProfitReportPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {data.operatingCosts.map((c) => (
+                    {data.sauGiam.operatingCosts.map((c) => (
                       <tr key={c.categoryId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
                         <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">{c.categoryName}</td>
                         <td className="px-4 py-2.5 text-right text-gray-600">{c.costCount}</td>

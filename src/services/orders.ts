@@ -13,6 +13,7 @@ export interface OrderDetail {
 export interface OrderPayment {
   type: number;
   name?: string;
+  cardCode?: string;
 }
 
 export interface OrderItem {

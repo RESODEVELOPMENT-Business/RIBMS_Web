@@ -266,7 +266,7 @@ export interface ProfitDataQuality {
 export interface StoreProfitItem {
   storeId: number;
   storeName: string;
-  netSales: number;
+  revenue: number;
   cogs: number;
   grossProfit: number;
   grossMargin: number;
@@ -294,10 +294,9 @@ export interface CategoryProfitItem {
   grossMargin: number;
 }
 
-export interface ProfitReportData {
-  grossSales: number;
-  totalDiscount: number;
-  netSales: number;
+export interface ProfitBlockData {
+  revenueLabel: string;
+  revenue: number;
   cogs: number;
   grossProfit: number;
   grossMargin: number;
@@ -306,6 +305,14 @@ export interface ProfitReportData {
   netMargin: number;
   operatingCosts: CostCategoryBreakdownItem[];
   storeProfits: StoreProfitItem[];
+}
+
+export interface ProfitReportData {
+  grossSales: number;
+  totalDiscount: number;
+  netSales: number;
+  thuan: ProfitBlockData;
+  sauGiam: ProfitBlockData;
   topProfitableProducts: ProductProfitItem[];
   lowestMarginProducts: ProductProfitItem[];
   categoryProfits: CategoryProfitItem[];
@@ -372,6 +379,12 @@ const buildScopedQuery = (
   return params.toString();
 };
 
+const appendStoreIds = (params: URLSearchParams, storeIds?: number[] | null) => {
+  if (storeIds && storeIds.length > 0) {
+    storeIds.forEach((id) => params.append('storeIds', id.toString()));
+  }
+};
+
 export const getSalesDashboard = async (
   storeId?: number | null,
   brandId?: number | null,
@@ -379,12 +392,17 @@ export const getSalesDashboard = async (
   toDate?: string,
   comparisonMode?: ComparisonMode,
   trendGranularity?: TrendGranularity,
+  storeIds?: number[] | null,
 ) => {
-  const extra: Record<string, string> = {};
-  if (comparisonMode) extra.comparisonMode = comparisonMode;
-  if (trendGranularity) extra.trendGranularity = trendGranularity;
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate, extra);
-  return await apiClient(`/orders/dashboard?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  if (comparisonMode) params.append('comparisonMode', comparisonMode);
+  if (trendGranularity) params.append('trendGranularity', trendGranularity);
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard?${params.toString()}`);
 };
 
 export const getTopStoreRevenues = async (
@@ -392,9 +410,15 @@ export const getTopStoreRevenues = async (
   brandId?: number | null,
   fromDate?: string,
   toDate?: string,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
-  return await apiClient(`/orders/dashboard/top-store-revenues?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/top-store-revenues?${params.toString()}`);
 };
 
 export const getStorePaymentMethods = async (
@@ -402,9 +426,15 @@ export const getStorePaymentMethods = async (
   brandId?: number | null,
   fromDate?: string,
   toDate?: string,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
-  return await apiClient(`/orders/dashboard/store-payment-methods?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/store-payment-methods?${params.toString()}`);
 };
 
 export const getOrdersReport = async (
@@ -412,9 +442,15 @@ export const getOrdersReport = async (
   brandId?: number | null,
   fromDate?: string,
   toDate?: string,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
-  return await apiClient(`/orders/dashboard/orders-report?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/orders-report?${params.toString()}`);
 };
 
 export const getProductsReport = async (
@@ -423,9 +459,16 @@ export const getProductsReport = async (
   fromDate?: string,
   toDate?: string,
   top: number = 20,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate, { top });
-  return await apiClient(`/orders/dashboard/products-report?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  if (top) params.append('top', top.toString());
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/products-report?${params.toString()}`);
 };
 
 export const getOperationsReport = async (
@@ -452,9 +495,16 @@ export const getCustomerMarketingReport = async (
   fromDate?: string,
   toDate?: string,
   topPromotions: number = 10,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate, { topPromotions });
-  return await apiClient(`/orders/dashboard/customer-marketing-report?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  if (topPromotions) params.append('topPromotions', topPromotions.toString());
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/customer-marketing-report?${params.toString()}`);
 };
 
 export const getProfitReport = async (
@@ -463,9 +513,16 @@ export const getProfitReport = async (
   fromDate?: string,
   toDate?: string,
   top: number = 20,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate, { top });
-  return await apiClient(`/orders/dashboard/profit-report?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  if (top) params.append('top', top.toString());
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/profit-report?${params.toString()}`);
 };
 
 export const getProfitForecast = async (
@@ -473,9 +530,15 @@ export const getProfitForecast = async (
   brandId?: number | null,
   fromDate?: string,
   toDate?: string,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
-  return await apiClient(`/orders/dashboard/profit-forecast?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/profit-forecast?${params.toString()}`);
 };
 
 // ── Daily operations report ──────────────────────────────────────
@@ -525,9 +588,15 @@ export const getDailyOperationsReport = async (
   brandId?: number | null,
   fromDate?: string,
   toDate?: string,
+  storeIds?: number[] | null,
 ) => {
-  const qs = buildScopedQuery(storeId, brandId, fromDate, toDate);
-  return await apiClient(`/orders/dashboard/daily-operations-report?${qs}`);
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/daily-operations-report?${params.toString()}`);
 };
 
 // ── Weekly 9-weeks breakdown ──────────────────────────────────────

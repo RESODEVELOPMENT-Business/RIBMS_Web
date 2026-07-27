@@ -16,6 +16,7 @@ import {
   buildScopeHeaderRows,
   exportSheetsToExcel,
 } from '../utils/excelExport';
+import { toVietnamDateStr, startOfVietnamDay } from '@/lib/vietnamDate';
 
 const formatVND = (v: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
@@ -38,8 +39,7 @@ const WEEKDAYS = [
 /** Get the most recent date for a given day-of-week (0-6).
  *  If today IS that day, return today. */
 function getMostRecentDay(jsDay: number): Date {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = startOfVietnamDay(new Date());
   const todayDay = today.getDay();
   const diff = (todayDay - jsDay + 7) % 7; // how many days back
   const target = new Date(today);
@@ -47,9 +47,9 @@ function getMostRecentDay(jsDay: number): Date {
   return target;
 }
 
-/** YYYY-MM-DD */
+/** YYYY-MM-DD (theo múi giờ VN) */
 function toISO(d: Date): string {
-  return d.toISOString().split('T')[0];
+  return toVietnamDateStr(d);
 }
 
 /** Format as dd/MM */
@@ -61,7 +61,7 @@ export default function ComparisonPage() {
   const filters = useDashboardFilters();
   const {
     stores, storesLoading,
-    selectedStoreId, setSelectedStoreId,
+    selectedStoreIds, setSelectedStoreIds,
     fromDate, toDate, setDateRange,
     resolveBrandId,
   } = filters;
@@ -76,23 +76,25 @@ export default function ComparisonPage() {
   useEffect(() => {
     if (!storesLoading) void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, fromDate, toDate, storesLoading, comparisonMode]);
+  }, [selectedStoreIds, fromDate, toDate, storesLoading, comparisonMode]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const brandIdToUse = resolveBrandId();
-      if (!selectedStoreId && !brandIdToUse) {
+      if (selectedStoreIds.length === 0 && !brandIdToUse) {
         setData(null);
         setLoading(false);
         return;
       }
       const res = await getSalesDashboard(
-        selectedStoreId ? Number(selectedStoreId) : null,
-        !selectedStoreId ? brandIdToUse : null,
+        null,
+        selectedStoreIds.length === 0 ? brandIdToUse : null,
         fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate ? `${toDate}T23:59:59` : undefined,
         comparisonMode,
+        undefined,
+        selectedStoreIds.length > 0 ? selectedStoreIds : null,
       );
       setData(res?.data ?? null);
     } catch (err: any) {
@@ -131,9 +133,15 @@ export default function ComparisonPage() {
   const handleExport = () => {
     if (!data?.comparison) return;
     const storeName =
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.name ||
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
-      undefined;
+      selectedStoreIds.length > 0
+        ? selectedStoreIds
+            .map((id) => {
+              const s = stores.find((st) => (st.id || st.storeId) === id);
+              return s?.name || s?.storeName;
+            })
+            .filter(Boolean)
+            .join(', ')
+        : undefined;
 
     const rows = [
       { 'Chỉ số': 'Mode so sánh', 'Kỳ này': data.comparison.mode, 'Kỳ trước': '—' },
@@ -172,12 +180,13 @@ export default function ComparisonPage() {
       <DashboardFilters
         stores={stores}
         storesLoading={storesLoading}
-        selectedStoreId={selectedStoreId}
+        selectedStoreIds={selectedStoreIds}
         fromDate={fromDate}
         toDate={toDate}
-        onStoreChange={setSelectedStoreId}
+        onStoreIdsChange={setSelectedStoreIds}
         onDateRangeChange={setDateRange}
         datePickerId="comparison-date-range"
+        multiSelect
       />
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">

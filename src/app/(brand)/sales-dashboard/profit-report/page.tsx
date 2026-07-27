@@ -5,6 +5,11 @@ import { toast } from 'sonner';
 import {
   getProfitReport,
   ProfitReportData,
+  ProfitBlockData,
+  StoreProfitItem,
+  CostCategoryBreakdownItem,
+  ProductProfitItem,
+  CategoryProfitItem,
 } from '@/services/salesDashboard';
 import {
   DollarLineIcon,
@@ -28,7 +33,7 @@ export default function ProfitReportPage() {
   const filters = useDashboardFilters();
   const {
     stores, storesLoading,
-    selectedStoreId, setSelectedStoreId,
+    selectedStoreIds, setSelectedStoreIds,
     fromDate, toDate, setDateRange,
     resolveBrandId,
   } = filters;
@@ -40,23 +45,24 @@ export default function ProfitReportPage() {
   useEffect(() => {
     if (!storesLoading) void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, fromDate, toDate, storesLoading]);
+  }, [selectedStoreIds, fromDate, toDate, storesLoading]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const brandIdToUse = resolveBrandId();
-      if (!selectedStoreId && !brandIdToUse) {
+      if (selectedStoreIds.length === 0 && !brandIdToUse) {
         setData(null);
         setLoading(false);
         return;
       }
       const res = await getProfitReport(
-        selectedStoreId ? Number(selectedStoreId) : null,
-        !selectedStoreId ? brandIdToUse : null,
+        null,
+        selectedStoreIds.length === 0 ? brandIdToUse : null,
         fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate ? `${toDate}T23:59:59` : undefined,
         20,
+        selectedStoreIds.length > 0 ? selectedStoreIds : null,
       );
       setData(res?.data ?? null);
     } catch (err: any) {
@@ -71,21 +77,15 @@ export default function ProfitReportPage() {
   const handleExport = () => {
     if (!data) return;
     const storeName =
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.name ||
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
-      undefined;
-
-    const summaryRows = [
-      { 'Chỉ số': 'Doanh thu gộp', 'Giá trị (VND)': data.grossSales },
-      { 'Chỉ số': 'Tổng giảm giá', 'Giá trị (VND)': data.totalDiscount },
-      { 'Chỉ số': 'Doanh thu thuần', 'Giá trị (VND)': data.netSales },
-      { 'Chỉ số': 'COGS', 'Giá trị (VND)': data.cogs },
-      { 'Chỉ số': 'Lợi nhuận gộp', 'Giá trị (VND)': data.grossProfit },
-      { 'Chỉ số': 'Gross margin (%)', 'Giá trị (%)': data.grossMargin },
-      { 'Chỉ số': 'Tổng chi phí vận hành', 'Giá trị (VND)': data.operatingCostTotal },
-      { 'Chỉ số': 'Lợi nhuận ròng', 'Giá trị (VND)': data.netProfit },
-      { 'Chỉ số': 'Net margin (%)', 'Giá trị (%)': data.netMargin },
-    ] as Record<string, any>[];
+      selectedStoreIds.length > 0
+        ? selectedStoreIds
+            .map((id) => {
+              const s = stores.find((st) => (st.id || st.storeId) === id);
+              return s?.name || s?.storeName;
+            })
+            .filter(Boolean)
+            .join(', ')
+        : undefined;
 
     const dqRows = [
       { 'Chỉ số': 'SKU có doanh thu', 'Giá trị': data.dataQuality.totalProductsWithSales },
@@ -94,16 +94,36 @@ export default function ProfitReportPage() {
       { 'Chỉ số': '% doanh thu thiếu PriceCogs', 'Giá trị': data.dataQuality.missingCogsRevenueShare },
     ];
 
-    const storeRows = data.storeProfits.map((s, idx) => ({
-      STT: idx + 1,
-      'Cửa hàng': s.storeName,
-      'Doanh thu thuần (VND)': s.netSales,
-      'COGS (VND)': s.cogs,
-      'Lợi nhuận gộp (VND)': s.grossProfit,
-      'Margin (%)': s.grossMargin,
-    }));
+    const blockSummaryRows = (b: ProfitBlockData, prefix: string) => [
+      { 'Chỉ số': `${prefix} — ${b.revenueLabel}`, 'Giá trị (VND)': b.revenue },
+      { 'Chỉ số': `${prefix} — COGS`, 'Giá trị (VND)': b.cogs },
+      { 'Chỉ số': `${prefix} — Lợi nhuận gộp`, 'Giá trị (VND)': b.grossProfit },
+      { 'Chỉ số': `${prefix} — Gross margin (%)`, 'Giá trị (%)': b.grossMargin },
+      { 'Chỉ số': `${prefix} — Tổng chi phí vận hành`, 'Giá trị (VND)': b.operatingCostTotal },
+      { 'Chỉ số': `${prefix} — Lợi nhuận ròng`, 'Giá trị (VND)': b.netProfit },
+      { 'Chỉ số': `${prefix} — Net margin (%)`, 'Giá trị (%)': b.netMargin },
+    ] as Record<string, any>[];
 
-    const productRows = (rows: typeof data.topProfitableProducts) =>
+    const blockCostRows = (b: ProfitBlockData) =>
+      b.operatingCosts.map((c) => ({
+        'Loại chi phí': c.categoryName,
+        'Số mục': c.costCount,
+        'Tổng (VND)': c.total,
+        'Tỷ trọng (%)': c.sharePercent,
+        'Marketing': c.isMarketing ? 'X' : '',
+      }));
+
+    const blockStoreRows = (b: ProfitBlockData) =>
+      b.storeProfits.map((s, idx) => ({
+        STT: idx + 1,
+        'Cửa hàng': s.storeName,
+        [`${b.revenueLabel} (VND)`]: s.revenue,
+        'COGS (VND)': s.cogs,
+        'Lợi nhuận gộp (VND)': s.grossProfit,
+        'Margin (%)': s.grossMargin,
+      }));
+
+    const productRows = (rows: ProductProfitItem[]) =>
       rows.map((p, idx) => ({
         STT: idx + 1,
         'Sản phẩm': p.productName,
@@ -117,7 +137,7 @@ export default function ProfitReportPage() {
         'Cảnh báo PriceCogs': p.missingCogs ? 'Thiếu' : '',
       }));
 
-    const categoryRows = data.categoryProfits.map((c) => ({
+    const categoryRows: Record<string, any>[] = data.categoryProfits.map((c) => ({
       'Nhóm': c.categoryName,
       'Số lượng': c.quantity,
       'Doanh thu (VND)': c.revenue,
@@ -136,16 +156,21 @@ export default function ProfitReportPage() {
           toDate,
         }),
       },
-      { name: 'Tóm tắt', rows: summaryRows },
-      { name: 'Chi phí vận hành', rows: data.operatingCosts.map((c) => ({
-          'Loại chi phí': c.categoryName,
-          'Số mục': c.costCount,
-          'Tổng (VND)': c.total,
-          'Tỷ trọng (%)': c.sharePercent,
-          'Marketing': c.isMarketing ? 'X' : '',
-        })) },
+      {
+        name: 'Tóm tắt 2 block',
+        rows: [
+          { 'Chỉ số': 'Doanh thu gộp (TotalAmount)', 'Giá trị (VND)': data.grossSales },
+          { 'Chỉ số': 'Tổng giảm giá', 'Giá trị (VND)': data.totalDiscount },
+          { 'Chỉ số': 'Doanh thu sau giảm (FinalAmount)', 'Giá trị (VND)': data.netSales },
+          ...blockSummaryRows(data.thuan, 'Thuần'),
+          ...blockSummaryRows(data.sauGiam, 'Sau giảm'),
+        ],
+      },
+      { name: 'Chi phí VH (Thuần)', rows: blockCostRows(data.thuan) },
+      { name: 'Chi phí VH (Sau giảm)', rows: blockCostRows(data.sauGiam) },
+      { name: 'Cửa hàng (Thuần)', rows: blockStoreRows(data.thuan) },
+      { name: 'Cửa hàng (Sau giảm)', rows: blockStoreRows(data.sauGiam) },
       { name: 'Data quality', rows: dqRows },
-      { name: 'Theo cửa hàng', rows: storeRows },
       { name: 'Top sinh lời', rows: productRows(data.topProfitableProducts) },
       { name: 'Margin thấp', rows: productRows(data.lowestMarginProducts) },
       { name: 'Theo nhóm', rows: categoryRows },
@@ -153,14 +178,14 @@ export default function ProfitReportPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-gray-800 dark:text-gray-100">
+    <div className="p-6 max-w-[1600px] mx-auto space-y-6 text-gray-800 dark:text-gray-100">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400 bg-clip-text text-transparent">
             Báo Cáo Lợi Nhuận
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            BC#4 — COGS, gross profit, margin theo SKU / nhóm / cửa hàng
+            BC#4 — COGS, lợi nhuận gộp/ròng, theo cửa hàng &amp; chi phí vận hành theo loại. Hai block: doanh thu thuần &amp; doanh thu sau giảm.
           </p>
         </div>
         <ExportExcelButton onClick={handleExport} disabled={loading || !data} />
@@ -169,25 +194,28 @@ export default function ProfitReportPage() {
       <DashboardFilters
         stores={stores}
         storesLoading={storesLoading}
-        selectedStoreId={selectedStoreId}
+        selectedStoreIds={selectedStoreIds}
         fromDate={fromDate}
         toDate={toDate}
-        onStoreChange={setSelectedStoreId}
+        onStoreIdsChange={setSelectedStoreIds}
         onDateRangeChange={setDateRange}
         datePickerId="profit-report-date-range"
+        multiSelect
       />
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-28 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl" />
-          ))}
-          <div className="md:col-span-3 h-72 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-28 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl" />
+            ))}
+          </div>
+          <div className="h-72 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-2xl" />
         </div>
       ) : !data ? (
         <EmptyState />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Data quality warning */}
           {data.dataQuality.productsMissingCogs > 0 && (
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-300">
@@ -196,135 +224,25 @@ export default function ProfitReportPage() {
                 <strong>Cảnh báo data quality:</strong>{' '}
                 {data.dataQuality.productsMissingCogs}/{data.dataQuality.totalProductsWithSales} SKU
                 chưa có giá vốn (PriceCogs), tương đương{' '}
-                <strong>{data.dataQuality.missingCogsRevenueShare.toFixed(2)}%</strong> doanh thu thuần.{' '}
-                Lợi nhuận tổng đang bị lệch — nhập đầy đủ PriceCogs để có số chính xác.
+                <strong>{data.dataQuality.missingCogsRevenueShare.toFixed(2)}%</strong> doanh thu sau giảm.{' '}
+                Lợi nhuận đang bị lệch — nhập đầy đủ PriceCogs để có số chính xác.
               </div>
             </div>
           )}
 
-          {/* KPI cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />}
-                     label="Doanh thu thuần"
-                     value={formatVND(data.netSales)}
-                     subValue={`Gross: ${formatVND(data.grossSales)}`}
-                     accent="indigo" />
-            <KpiCard icon={<PieChartIcon className="w-5 h-5" />}
-                     label="COGS"
-                     value={formatVND(data.cogs)}
-                     subValue="Σ priceCogs × qty"
-                     accent="amber" />
-            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />}
-                     label="Lợi nhuận gộp"
-                     value={formatVND(data.grossProfit)}
-                     subValue={`Margin: ${data.grossMargin.toFixed(2)}%`}
-                     accent={data.grossProfit >= 0 ? 'emerald' : 'rose'} />
-            <KpiCard icon={<DollarLineIcon className="w-5 h-5" />}
-                     label="Lợi nhuận ròng"
-                     value={formatVND(data.netProfit)}
-                     subValue={`Margin: ${data.netMargin.toFixed(2)}% • Chi phí VH: ${formatVND(data.operatingCostTotal)}`}
-                     accent={data.netProfit >= 0 ? 'emerald' : 'rose'} />
-          </div>
+          {/* Block 1: Doanh thu thuần */}
+          <ProfitBlock block={data.thuan} accent="indigo" />
 
-          {/* Operating costs breakdown */}
-          {data.operatingCosts.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold">Chi phí vận hành theo loại</h2>
-                <span className="text-xs text-gray-400">
-                  Tổng: {formatVND(data.operatingCostTotal)} • {data.operatingCosts.length} danh mục
-                </span>
-              </div>
-              <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
-                <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-800/50">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left font-bold text-gray-500 uppercase">Loại chi phí</th>
-                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Số mục</th>
-                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Tổng chi</th>
-                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Tỷ trọng</th>
-                      <th className="px-4 py-2.5 text-center font-bold text-gray-500 uppercase">Marketing</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {data.operatingCosts.map((c) => (
-                      <tr key={c.categoryId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
-                        <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">
-                          {c.categoryName}
-                        </td>
-                        <td className="px-4 py-2.5 text-right text-gray-600">{c.costCount}</td>
-                        <td className="px-4 py-2.5 text-right text-rose-600 dark:text-rose-400 font-bold">
-                          -{formatVND(c.total)}
-                        </td>
-                        <td className="px-4 py-2.5 text-right text-brand-600 dark:text-brand-400 font-semibold">
-                          {c.sharePercent.toFixed(2)}%
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          {c.isMarketing && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300">
-                              MKT
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-gray-400 mt-3">
-                <strong>Marketing</strong> được nhận diện tự động theo tên category (chứa từ khóa
-                "marketing", "quảng cáo", "tiếp thị", "promotion", "ads").
-              </p>
-            </div>
-          )}
+          {/* Block 2: Doanh thu sau giảm */}
+          <ProfitBlock block={data.sauGiam} accent="emerald" />
 
-          {/* Store profits */}
-          {data.storeProfits.length > 1 && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
-              <h2 className="text-lg font-bold mb-4">Lợi nhuận theo cửa hàng</h2>
-              <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
-                <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-800/50">
-                    <tr>
-                      <th className="px-4 py-2.5 text-center font-bold text-gray-500 uppercase tracking-wider w-12">#</th>
-                      <th className="px-4 py-2.5 text-left font-bold text-gray-500 uppercase tracking-wider">Cửa hàng</th>
-                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">DT thuần</th>
-                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">COGS</th>
-                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Lợi nhuận</th>
-                      <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Margin</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {data.storeProfits.map((s, idx) => (
-                      <tr key={s.storeId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
-                        <td className="px-4 py-2.5 text-center text-gray-500">{idx + 1}</td>
-                        <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">{s.storeName}</td>
-                        <td className="px-4 py-2.5 text-right">{formatVND(s.netSales)}</td>
-                        <td className="px-4 py-2.5 text-right text-amber-600">{formatVND(s.cogs)}</td>
-                        <td className={`px-4 py-2.5 text-right font-bold ${s.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {formatVND(s.grossProfit)}
-                        </td>
-                        <td className={`px-4 py-2.5 text-right font-semibold ${
-                          s.grossMargin >= 30 ? 'text-emerald-600' : s.grossMargin >= 15 ? 'text-amber-600' : 'text-rose-600'
-                        }`}>
-                          {s.grossMargin.toFixed(2)}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Tabs */}
+          {/* Tabs product / category (top-level, chung cho cả 2 block) */}
           <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6">
             <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-gray-100 dark:border-gray-800/80 pb-3">
               <TabButton active={tab === 'top'} onClick={() => setTab('top')}>Top sinh lời</TabButton>
               <TabButton active={tab === 'lowest'} onClick={() => setTab('lowest')}>Margin thấp</TabButton>
               <TabButton active={tab === 'category'} onClick={() => setTab('category')}>Theo nhóm</TabButton>
             </div>
-
             {tab === 'top' && <ProductProfitTable rows={data.topProfitableProducts} title="Top 20 sản phẩm sinh lời" />}
             {tab === 'lowest' && <ProductProfitTable rows={data.lowestMarginProducts} title="Top 20 sản phẩm margin thấp nhất (đã có PriceCogs)" />}
             {tab === 'category' && <CategoryTable rows={data.categoryProfits} />}
@@ -335,7 +253,156 @@ export default function ProfitReportPage() {
   );
 }
 
-function ProductProfitTable({ rows, title }: { rows: any[]; title: string }) {
+function ProfitBlock({ block, accent }: { block: ProfitBlockData; accent: 'indigo' | 'emerald' }) {
+  const accentText =
+    accent === 'indigo'
+      ? 'text-indigo-600 dark:text-indigo-400'
+      : 'text-emerald-600 dark:text-emerald-400';
+  const accentBar =
+    accent === 'indigo'
+      ? 'from-indigo-500 to-brand-500'
+      : 'from-emerald-500 to-teal-500';
+
+  return (
+    <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <div className={`h-8 w-1.5 rounded-full bg-gradient-to-b ${accentBar}`} />
+        <div>
+          <h2 className={`text-xl font-extrabold ${accentText}`}>{block.revenueLabel}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            COGS, lợi nhuận gộp/ròng, theo cửa hàng &amp; chi phí vận hành theo loại — tính trên base {block.revenueLabel.toLowerCase()}.
+          </p>
+        </div>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard icon={<DollarLineIcon className="w-5 h-5" />}
+                 label={block.revenueLabel}
+                 value={formatVND(block.revenue)}
+                 accent="indigo" />
+        <KpiCard icon={<PieChartIcon className="w-5 h-5" />}
+                 label="COGS"
+                 value={formatVND(block.cogs)}
+                 subValue="Σ priceCogs × qty"
+                 accent="amber" />
+        <KpiCard icon={<DollarLineIcon className="w-5 h-5" />}
+                 label="Lợi nhuận gộp"
+                 value={formatVND(block.grossProfit)}
+                 subValue={`Margin: ${block.grossMargin.toFixed(2)}%`}
+                 accent={block.grossProfit >= 0 ? 'emerald' : 'rose'} />
+        <KpiCard icon={<DollarLineIcon className="w-5 h-5" />}
+                 label="Lợi nhuận ròng"
+                 value={formatVND(block.netProfit)}
+                 subValue={`Margin: ${block.netMargin.toFixed(2)}% • Chi phí VH: ${formatVND(block.operatingCostTotal)}`}
+                 accent={block.netProfit >= 0 ? 'emerald' : 'rose'} />
+      </div>
+
+      {/* Operating costs breakdown */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-bold">Chi phí vận hành theo loại</h3>
+          <span className="text-xs text-gray-400">
+            Tổng: {formatVND(block.operatingCostTotal)} • {block.operatingCosts.length} danh mục
+          </span>
+        </div>
+        <OperatingCostsTable rows={block.operatingCosts} />
+      </div>
+
+      {/* Store profits */}
+      <div>
+        <h3 className="text-base font-bold mb-3">Lợi nhuận theo cửa hàng</h3>
+        <StoreProfitsTable rows={block.storeProfits} revenueLabel={block.revenueLabel} />
+      </div>
+    </section>
+  );
+}
+
+function OperatingCostsTable({ rows }: { rows: CostCategoryBreakdownItem[] }) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">Không có dữ liệu chi phí vận hành.</p>;
+  }
+  return (
+    <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
+      <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+        <thead className="bg-gray-50 dark:bg-gray-800/50">
+          <tr>
+            <th className="px-4 py-2.5 text-left font-bold text-gray-500 uppercase">Loại chi phí</th>
+            <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Số mục</th>
+            <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Tổng chi</th>
+            <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase">Tỷ trọng</th>
+            <th className="px-4 py-2.5 text-center font-bold text-gray-500 uppercase">Marketing</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          {rows.map((c) => (
+            <tr key={c.categoryId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
+              <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">
+                {c.categoryName}
+              </td>
+              <td className="px-4 py-2.5 text-right text-gray-600">{c.costCount}</td>
+              <td className="px-4 py-2.5 text-right text-rose-600 dark:text-rose-400 font-bold">
+                {formatVND(c.total)}
+              </td>
+              <td className="px-4 py-2.5 text-right text-brand-600 dark:text-brand-400 font-semibold">
+                {c.sharePercent.toFixed(2)}%
+              </td>
+              <td className="px-4 py-2.5 text-center">
+                {c.isMarketing && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300">
+                    MKT
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function StoreProfitsTable({ rows, revenueLabel }: { rows: StoreProfitItem[]; revenueLabel: string }) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">Không có dữ liệu theo cửa hàng.</p>;
+  }
+  return (
+    <div className="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-800">
+      <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+        <thead className="bg-gray-50 dark:bg-gray-800/50">
+          <tr>
+            <th className="px-4 py-2.5 text-center font-bold text-gray-500 uppercase tracking-wider w-12">#</th>
+            <th className="px-4 py-2.5 text-left font-bold text-gray-500 uppercase tracking-wider">Cửa hàng</th>
+            <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">{revenueLabel}</th>
+            <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">COGS</th>
+            <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Lợi nhuận</th>
+            <th className="px-4 py-2.5 text-right font-bold text-gray-500 uppercase tracking-wider">Margin</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          {rows.map((s, idx) => (
+            <tr key={s.storeId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
+              <td className="px-4 py-2.5 text-center text-gray-500">{idx + 1}</td>
+              <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">{s.storeName}</td>
+              <td className="px-4 py-2.5 text-right">{formatVND(s.revenue)}</td>
+              <td className="px-4 py-2.5 text-right text-amber-600">{formatVND(s.cogs)}</td>
+              <td className={`px-4 py-2.5 text-right font-bold ${s.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {formatVND(s.grossProfit)}
+              </td>
+              <td className={`px-4 py-2.5 text-right font-semibold ${
+                s.grossMargin >= 30 ? 'text-emerald-600' : s.grossMargin >= 15 ? 'text-amber-600' : 'text-rose-600'
+              }`}>
+                {s.grossMargin.toFixed(2)}%
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ProductProfitTable({ rows, title }: { rows: ProductProfitItem[]; title: string }) {
   return (
     <div>
       <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 mb-3">{title}</h3>
@@ -388,7 +455,7 @@ function ProductProfitTable({ rows, title }: { rows: any[]; title: string }) {
   );
 }
 
-function CategoryTable({ rows }: { rows: any[] }) {
+function CategoryTable({ rows }: { rows: CategoryProfitItem[] }) {
   if (rows.length === 0) {
     return <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">Không có dữ liệu.</p>;
   }

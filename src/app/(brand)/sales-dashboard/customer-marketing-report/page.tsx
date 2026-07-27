@@ -23,7 +23,7 @@ export default function CustomerMarketingReportPage() {
   const filters = useDashboardFilters();
   const {
     stores, storesLoading,
-    selectedStoreId, setSelectedStoreId,
+    selectedStoreIds, setSelectedStoreIds,
     fromDate, toDate, setDateRange,
     resolveBrandId,
   } = filters;
@@ -34,23 +34,24 @@ export default function CustomerMarketingReportPage() {
   useEffect(() => {
     if (!storesLoading) void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, fromDate, toDate, storesLoading]);
+  }, [selectedStoreIds, fromDate, toDate, storesLoading]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const brandIdToUse = resolveBrandId();
-      if (!selectedStoreId && !brandIdToUse) {
+      if (selectedStoreIds.length === 0 && !brandIdToUse) {
         setData(null);
         setLoading(false);
         return;
       }
       const res = await getCustomerMarketingReport(
-        selectedStoreId ? Number(selectedStoreId) : null,
-        !selectedStoreId ? brandIdToUse : null,
+        null,
+        selectedStoreIds.length === 0 ? brandIdToUse : null,
         fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate ? `${toDate}T23:59:59` : undefined,
         10,
+        selectedStoreIds.length > 0 ? selectedStoreIds : null,
       );
       setData(res?.data ?? null);
     } catch (err: any) {
@@ -65,9 +66,15 @@ export default function CustomerMarketingReportPage() {
   const handleExport = () => {
     if (!data) return;
     const storeName =
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.name ||
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
-      undefined;
+      selectedStoreIds.length > 0
+        ? selectedStoreIds
+            .map((id) => {
+              const s = stores.find((st) => (st.id || st.storeId) === id);
+              return s?.name || s?.storeName;
+            })
+            .filter(Boolean)
+            .join(', ')
+        : undefined;
 
     const summaryRows = [
       { 'Chỉ số': 'Khách đăng ký trong kỳ', 'Giá trị': data.totalCustomersInPeriod },
@@ -153,12 +160,13 @@ export default function CustomerMarketingReportPage() {
       <DashboardFilters
         stores={stores}
         storesLoading={storesLoading}
-        selectedStoreId={selectedStoreId}
+        selectedStoreIds={selectedStoreIds}
         fromDate={fromDate}
         toDate={toDate}
-        onStoreChange={setSelectedStoreId}
+        onStoreIdsChange={setSelectedStoreIds}
         onDateRangeChange={setDateRange}
         datePickerId="customer-marketing-date-range"
+        multiSelect
       />
 
       {loading ? (

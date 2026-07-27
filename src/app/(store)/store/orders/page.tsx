@@ -524,6 +524,13 @@ export default function OrdersPage() {
                 {paymentTypesLoading && (
                   <p className="text-xs text-gray-400">Đang tải danh sách phương thức thanh toán...</p>
                 )}
+                {selectedOrder?.payments?.[0]?.cardCode && (
+                  <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg">
+                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      Thẻ thành viên: {selectedOrder.payments[0].cardCode}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

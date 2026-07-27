@@ -62,8 +62,8 @@ export default function DailyOperationsReportPage() {
   const {
     stores,
     storesLoading,
-    selectedStoreId,
-    setSelectedStoreId,
+    selectedStoreIds,
+    setSelectedStoreIds,
     fromDate,
     toDate,
     setDateRange,
@@ -76,22 +76,23 @@ export default function DailyOperationsReportPage() {
   useEffect(() => {
     if (!storesLoading) void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, fromDate, toDate, storesLoading]);
+  }, [selectedStoreIds, fromDate, toDate, storesLoading]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const brandIdToUse = resolveBrandId();
-      if (!selectedStoreId && !brandIdToUse) {
+      if (selectedStoreIds.length === 0 && !brandIdToUse) {
         setData(null);
         setLoading(false);
         return;
       }
       const res = await getDailyOperationsReport(
-        selectedStoreId ? Number(selectedStoreId) : null,
-        !selectedStoreId ? brandIdToUse : null,
+        null,
+        selectedStoreIds.length === 0 ? brandIdToUse : null,
         fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate ? `${toDate}T23:59:59` : undefined,
+        selectedStoreIds.length > 0 ? selectedStoreIds : null,
       );
       setData(res?.data ?? null);
     } catch (err: any) {
@@ -106,9 +107,15 @@ export default function DailyOperationsReportPage() {
   const handleExport = () => {
     if (!data) return;
     const storeName =
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.name ||
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
-      undefined;
+      selectedStoreIds.length > 0
+        ? selectedStoreIds
+            .map((id) => {
+              const s = stores.find((st) => (st.id || st.storeId) === id);
+              return s?.name || s?.storeName;
+            })
+            .filter(Boolean)
+            .join(', ')
+        : undefined;
 
     const summaryRows = [
       { 'Chỉ số': 'Doanh thu gộp', 'Giá trị (VND)': data.grossSales },
@@ -129,9 +136,6 @@ export default function DailyOperationsReportPage() {
         '14h-18h': r.slot14To18,
         '18h-22h': r.slot18To22,
       };
-      data.paymentTypes.forEach((pt, i) => {
-        base[pt.name] = r.paymentAmounts[i] ?? 0;
-      });
       base['Giảm giá'] = r.discount;
       base['Tổng DT sau giảm giá'] = r.netSales;
       base['TC'] = r.billCount;
@@ -175,12 +179,13 @@ export default function DailyOperationsReportPage() {
       <DashboardFilters
         stores={stores}
         storesLoading={storesLoading}
-        selectedStoreId={selectedStoreId}
+        selectedStoreIds={selectedStoreIds}
         fromDate={fromDate}
         toDate={toDate}
-        onStoreChange={setSelectedStoreId}
+        onStoreIdsChange={setSelectedStoreIds}
         onDateRangeChange={setDateRange}
         datePickerId="daily-operations-date-range"
+        multiSelect
       />
 
       {loading ? (
@@ -243,11 +248,6 @@ export default function DailyOperationsReportPage() {
                     <th className={cellCls}>{formatCell(data.slot10To14)}</th>
                     <th className={cellCls}>{formatCell(data.slot14To18)}</th>
                     <th className={cellCls}>{formatCell(data.slot18To22)}</th>
-                    {data.paymentTypes.map((pt) => (
-                      <th key={pt.paymentTypeId} className={cellCls}>
-                        {formatCell(pt.total)}
-                      </th>
-                    ))}
                     <th className={cellCls}>{formatCell(data.totalDiscount)}</th>
                     <th className={`${cellCls} font-extrabold`}>{formatCell(data.netSales)}</th>
                     <th className={cellCls}>{formatNumber(data.totalBills)}</th>
@@ -261,11 +261,6 @@ export default function DailyOperationsReportPage() {
                     <th className={slotHeaderCls}>10h-14h</th>
                     <th className={slotHeaderCls}>14h-18h</th>
                     <th className={slotHeaderCls}>18h-22h</th>
-                    {data.paymentTypes.map((pt) => (
-                      <th key={pt.paymentTypeId} className={slotHeaderCls}>
-                        {pt.name}
-                      </th>
-                    ))}
                     <th className={slotHeaderCls}>Giảm giá</th>
                     <th className={slotHeaderCls}>Tổng DT</th>
                     <th className={slotHeaderCls}>TC</th>
@@ -288,11 +283,6 @@ export default function DailyOperationsReportPage() {
                         <td className={cellCls}>{formatCell(r.slot10To14)}</td>
                         <td className={cellCls}>{formatCell(r.slot14To18)}</td>
                         <td className={cellCls}>{formatCell(r.slot18To22)}</td>
-                        {data.paymentTypes.map((pt, i) => (
-                          <td key={pt.paymentTypeId} className={cellCls}>
-                            {formatCell(r.paymentAmounts[i] ?? 0)}
-                          </td>
-                        ))}
                         <td className={`${cellCls} text-rose-600 dark:text-rose-400`}>{formatCell(r.discount)}</td>
                         <td className={`${cellCls} font-bold`}>{formatCell(r.netSales)}</td>
                         <td className={cellCls}>{r.billCount || ''}</td>
@@ -305,8 +295,7 @@ export default function DailyOperationsReportPage() {
             </div>
             <p className="text-xs text-gray-400 mt-3">
               Cột khung giờ tính doanh thu thuần theo giờ tạo đơn (đơn ngoài 6h–22h vẫn nằm trong Tổng DT &amp; TC nhưng
-              không vào cột khung giờ). Cột thanh toán = tổng tiền theo từng phương thức của thương hiệu.
-              2 chỉ số lợi nhuận tính theo tháng hiện tại.
+              không vào cột khung giờ). 2 chỉ số lợi nhuận tính theo tháng hiện tại.
             </p>
           </div>
         </>

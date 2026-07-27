@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { getStores } from '@/services/stores';
+import { toVietnamDateStr } from '@/lib/vietnamDate';
 
 /**
  * Shared hook for the sales dashboard pages. Encapsulates:
@@ -18,14 +19,15 @@ export function useDashboardFilters(initialDays = 0) {
   const [stores, setStores] = useState<any[]>([]);
   const [storesLoading, setStoresLoading] = useState<boolean>(true);
   const [selectedStoreId, setSelectedStoreId] = useState<number | ''>('');
+  const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
 
   const [fromDate, setFromDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() - initialDays);
-    return d.toISOString().split('T')[0];
+    return toVietnamDateStr(d);
   });
   const [toDate, setToDate] = useState<string>(() =>
-    new Date().toISOString().split('T')[0],
+    toVietnamDateStr(new Date()),
   );
 
   useEffect(() => {
@@ -67,6 +69,8 @@ export function useDashboardFilters(initialDays = 0) {
     storesLoading,
     selectedStoreId,
     setSelectedStoreId,
+    selectedStoreIds,
+    setSelectedStoreIds,
     fromDate,
     toDate,
     setDateRange,

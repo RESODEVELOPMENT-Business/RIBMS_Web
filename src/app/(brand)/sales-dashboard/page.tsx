@@ -29,7 +29,7 @@ export default function SalesDashboardPage() {
   const filters = useDashboardFilters();
   const {
     stores, storesLoading,
-    selectedStoreId, setSelectedStoreId,
+    selectedStoreIds, setSelectedStoreIds,
     fromDate, toDate, setDateRange,
     resolveBrandId,
   } = filters;
@@ -43,24 +43,25 @@ export default function SalesDashboardPage() {
       void fetchDashboard();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, fromDate, toDate, storesLoading, trendGranularity]);
+  }, [selectedStoreIds, fromDate, toDate, storesLoading, trendGranularity]);
 
   const fetchDashboard = async () => {
     setLoading(true);
     try {
       const brandIdToUse = resolveBrandId();
-      if (!selectedStoreId && !brandIdToUse) {
+      if (selectedStoreIds.length === 0 && !brandIdToUse) {
         setDashboardData(null);
         setLoading(false);
         return;
       }
       const res = await getSalesDashboard(
-        selectedStoreId ? Number(selectedStoreId) : null,
-        !selectedStoreId ? brandIdToUse : null,
+        null,
+        selectedStoreIds.length === 0 ? brandIdToUse : null,
         fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate ? `${toDate}T23:59:59` : undefined,
         undefined,
         trendGranularity,
+        selectedStoreIds.length > 0 ? selectedStoreIds : null,
       );
       setDashboardData(res?.data ?? null);
     } catch (err: any) {
@@ -80,9 +81,15 @@ export default function SalesDashboardPage() {
   const handleExport = () => {
     if (!dashboardData) return;
     const storeName =
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.name ||
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
-      undefined;
+      selectedStoreIds.length > 0
+        ? selectedStoreIds
+            .map((id) => {
+              const s = stores.find((st) => (st.id || st.storeId) === id);
+              return s?.name || s?.storeName;
+            })
+            .filter(Boolean)
+            .join(', ')
+        : undefined;
 
     const summaryRows = [
       { 'Chỉ số': 'Doanh thu trước giảm giá', 'Giá trị (VND)': dashboardData.revenue.totalAmountBeforeDiscount },
@@ -164,12 +171,13 @@ export default function SalesDashboardPage() {
       <DashboardFilters
         stores={stores}
         storesLoading={storesLoading}
-        selectedStoreId={selectedStoreId}
+        selectedStoreIds={selectedStoreIds}
         fromDate={fromDate}
         toDate={toDate}
-        onStoreChange={setSelectedStoreId}
+        onStoreIdsChange={setSelectedStoreIds}
         onDateRangeChange={setDateRange}
         datePickerId="dashboard-date-range"
+        multiSelect
       />
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm space-y-4">

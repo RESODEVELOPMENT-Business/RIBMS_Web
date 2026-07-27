@@ -16,7 +16,7 @@ export default function TopStoreRevenuesPage() {
   const filters = useDashboardFilters(0); // default today
   const {
     stores, storesLoading,
-    selectedStoreId, setSelectedStoreId,
+    selectedStoreIds, setSelectedStoreIds,
     fromDate, toDate, setDateRange,
     resolveBrandId,
   } = filters;
@@ -27,22 +27,23 @@ export default function TopStoreRevenuesPage() {
   useEffect(() => {
     if (!storesLoading) void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId, fromDate, toDate, storesLoading]);
+  }, [selectedStoreIds, fromDate, toDate, storesLoading]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const brandIdToUse = resolveBrandId();
-      if (!selectedStoreId && !brandIdToUse) {
+      if (selectedStoreIds.length === 0 && !brandIdToUse) {
         setTopStoreRevenues([]);
         setLoading(false);
         return;
       }
       const res = await getTopStoreRevenues(
-        selectedStoreId ? Number(selectedStoreId) : null,
+        null,
         brandIdToUse || null,
         fromDate,
         toDate,
+        selectedStoreIds.length > 0 ? selectedStoreIds : null,
       );
       setTopStoreRevenues(res?.data ?? []);
     } catch (err: any) {
@@ -57,9 +58,15 @@ export default function TopStoreRevenuesPage() {
   const handleExport = () => {
     if (topStoreRevenues.length === 0) return;
     const storeName =
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.name ||
-      stores.find((s) => (s.id || s.storeId) === selectedStoreId)?.storeName ||
-      undefined;
+      selectedStoreIds.length > 0
+        ? selectedStoreIds
+            .map((id) => {
+              const s = stores.find((st) => (st.id || st.storeId) === id);
+              return s?.name || s?.storeName;
+            })
+            .filter(Boolean)
+            .join(', ')
+        : undefined;
 
     const rows = topStoreRevenues.map((s, idx) => ({
       STT: idx + 1,
@@ -104,12 +111,13 @@ export default function TopStoreRevenuesPage() {
       <DashboardFilters
         stores={stores}
         storesLoading={storesLoading}
-        selectedStoreId={selectedStoreId}
+        selectedStoreIds={selectedStoreIds}
         fromDate={fromDate}
         toDate={toDate}
-        onStoreChange={setSelectedStoreId}
+        onStoreIdsChange={setSelectedStoreIds}
         onDateRangeChange={setDateRange}
         datePickerId="top-store-revenues-date-range"
+        multiSelect
       />
 
       {loading ? (
