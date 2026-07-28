@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { createPaymentType } from '@/services/paymentTypes';
+import { createPaymentType, EPaymentTypeLabels, PlatformLabels } from '@/services/paymentTypes';
 
 export default function CreatePaymentTypePage() {
   const router = useRouter();
@@ -16,10 +16,12 @@ export default function CreatePaymentTypePage() {
     const formData = new FormData(e.currentTarget);
     const payload = {
       Name: String(formData.get('Name') || '').trim(),
+      Type: Number(formData.get('Type')),
+      Platform: Number(formData.get('Platform')),
       Position: formData.get('Position') ? Number(formData.get('Position')) : null,
       Icon: String(formData.get('Icon') || '').trim() || null,
       IsDisplay: formData.get('IsDisplay') === 'on',
-      IsComfirm: formData.get('IsComfirm') === 'on',
+      IsComfirm: false,
     };
 
     try {
@@ -39,7 +41,7 @@ export default function CreatePaymentTypePage() {
         <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">&larr; Back</button>
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Create Payment Type</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create a brand payment option for POS checkout</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create a brand payment option for checkout</p>
         </div>
       </div>
 
@@ -49,14 +51,13 @@ export default function CreatePaymentTypePage() {
           <Field label="Position" name="Position" type="number" />
           <Field label="Icon" name="Icon" />
 
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 md:col-span-2">
-            <input type="checkbox" name="IsDisplay" defaultChecked className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
-            Display in POS
-          </label>
+          <SelectField label="Type (Phương thức)" name="Type" options={EPaymentTypeLabels} required />
+
+          <SelectField label="Platform (Nền tảng)" name="Platform" options={PlatformLabels} />
 
           <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 md:col-span-2">
-            <input type="checkbox" name="IsComfirm" className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
-            Require confirmation
+            <input type="checkbox" name="IsDisplay" defaultChecked className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
+            Hiển thị (Display)
           </label>
 
           <div className="md:col-span-2 flex justify-end gap-3 pt-2">
@@ -74,6 +75,20 @@ function Field({ label, name, type = 'text', required = false }: { label: string
     <label className="block md:col-span-1">
       <span className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{label}</span>
       <input required={required} type={type} name={name} className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
+    </label>
+  );
+}
+
+function SelectField({ label, name, options, required = false }: { label: string; name: string; options: Record<number, string>; required?: boolean }) {
+  return (
+    <label className="block md:col-span-1">
+      <span className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{label}</span>
+      <select required={required} name={name} className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors">
+        <option value="">-- Chọn --</option>
+        {Object.entries(options).map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </select>
     </label>
   );
 }

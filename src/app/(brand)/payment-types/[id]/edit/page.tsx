@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { getPaymentTypeById, updatePaymentType } from '@/services/paymentTypes';
+import { getPaymentTypeById, updatePaymentType, EPaymentTypeLabels, PlatformLabels } from '@/services/paymentTypes';
 
 export default function EditPaymentTypePage() {
   const router = useRouter();
@@ -38,10 +38,12 @@ export default function EditPaymentTypePage() {
     const formData = new FormData(e.currentTarget);
     const payload = {
       Name: String(formData.get('Name') || '').trim(),
+      Type: Number(formData.get('Type')),
+      Platform: Number(formData.get('Platform')),
       Position: formData.get('Position') ? Number(formData.get('Position')) : null,
       Icon: String(formData.get('Icon') || '').trim() || null,
       IsDisplay: formData.get('IsDisplay') === 'on',
-      IsComfirm: formData.get('IsComfirm') === 'on',
+      IsComfirm: false,
     };
 
     try {
@@ -93,7 +95,7 @@ export default function EditPaymentTypePage() {
         <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">&larr; Back</button>
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Edit Payment Type</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Update the label and visibility used in POS checkout</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Update payment type configuration</p>
         </div>
       </div>
 
@@ -103,14 +105,12 @@ export default function EditPaymentTypePage() {
           <Field label="Position" name="Position" type="number" defaultValue={paymentType?.position ?? paymentType?.Position ?? ''} />
           <Field label="Icon" name="Icon" defaultValue={paymentType?.icon || paymentType?.Icon || ''} />
 
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 md:col-span-2">
-            <input type="checkbox" name="IsDisplay" defaultChecked={paymentType?.isDisplay ?? paymentType?.IsDisplay} className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
-            Display in POS
-          </label>
+          <SelectField label="Type (Phương thức)" name="Type" options={EPaymentTypeLabels} defaultValue={paymentType?.type ?? 0} required />
+          <SelectField label="Platform (Nền tảng)" name="Platform" options={PlatformLabels} defaultValue={paymentType?.platform ?? 0} />
 
           <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 md:col-span-2">
-            <input type="checkbox" name="IsComfirm" defaultChecked={paymentType?.isComfirm ?? paymentType?.IsComfirm} className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
-            Require confirmation
+            <input type="checkbox" name="IsDisplay" defaultChecked={paymentType?.isDisplay ?? paymentType?.IsDisplay} className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
+            Hiển thị (Display)
           </label>
 
           <div className="md:col-span-2 flex justify-end gap-3 pt-2">
@@ -128,6 +128,20 @@ function Field({ label, name, type = 'text', defaultValue, required = false }: {
     <label className="block md:col-span-1">
       <span className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{label}</span>
       <input required={required} type={type} name={name} defaultValue={defaultValue as any} className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors" />
+    </label>
+  );
+}
+
+function SelectField({ label, name, options, defaultValue, required = false }: { label: string; name: string; options: Record<number, string>; defaultValue?: number; required?: boolean }) {
+  return (
+    <label className="block md:col-span-1">
+      <span className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{label}</span>
+      <select required={required} name={name} defaultValue={defaultValue} className="w-full p-2.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-colors">
+        <option value="">-- Chọn --</option>
+        {Object.entries(options).map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </select>
     </label>
   );
 }

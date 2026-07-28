@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/data-table';
 import { SkeletonTable } from '@/components/ui/skeleton-table';
 import { PencilIcon, TrashBinIcon } from '@/icons';
-import { deletePaymentType, getPaymentTypes } from '@/services/paymentTypes';
+import { deletePaymentType, getPaymentTypes, EPaymentTypeLabels, PlatformLabels } from '@/services/paymentTypes';
 
 export default function PaymentTypesPage() {
   const [data, setData] = useState<any[]>([]);
@@ -50,6 +50,35 @@ export default function PaymentTypesPage() {
       cell: (info) => String(info.getValue() || '-'),
     },
     {
+      accessorKey: 'type',
+      header: 'Type',
+      cell: ({ row }) => {
+        const typeVal = row.original.type as number | undefined;
+        return (
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            {typeVal !== undefined ? EPaymentTypeLabels[typeVal] ?? typeVal : '-'}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: 'platform',
+      header: 'Platform',
+      cell: ({ row }) => {
+        const platformVal = row.original.platform as number | undefined;
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            platformVal === 0 ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+            platformVal === 1 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+            platformVal === 2 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+          }`}>
+            {platformVal !== undefined ? PlatformLabels[platformVal] ?? platformVal : '-'}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: 'position',
       header: 'Position',
       cell: (info) => String(info.getValue() ?? '-'),
@@ -67,18 +96,6 @@ export default function PaymentTypesPage() {
         return (
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${isDisplay ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
             {isDisplay ? 'Shown' : 'Hidden'}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: 'isComfirm',
-      header: 'Confirm',
-      cell: ({ row }) => {
-        const isComfirm = !!row.original.isComfirm;
-        return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${isComfirm ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
-            {isComfirm ? 'Yes' : 'No'}
           </span>
         );
       },
