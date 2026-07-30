@@ -330,6 +330,24 @@ export interface CostCategoryBreakdownItem {
 
 export type ComparisonMode = 'Auto' | 'DoD' | 'WoW' | 'MoM' | 'YoY';
 
+export interface StoreProfitForecastItem {
+  storeId: number;
+  storeName: string;
+  monthToDateNetSales: number;
+  avgSalesPerDay: number;
+  monthToDateCogs: number;
+  monthToDateOperatingCost: number;
+  profitToDate: number;
+  cogsRatioPercent: number;
+  projectedMonthlySales: number;
+  projectedWeeklySales: number;
+  projectedMaterialCost: number;
+  projectedOperatingCost: number;
+  projectedCostMonthly: number;
+  projectedProfitMonthly: number;
+  projectedProfitWeekly: number;
+}
+
 export interface ProfitForecastData {
   // Mốc thời gian (luôn là tháng hiện tại)
   monthStart: string;
@@ -353,6 +371,7 @@ export interface ProfitForecastData {
   projectedProfitMonthly: number;
   projectedProfitWeekly: number;
   costBreakdown: CostCategoryBreakdownItem[];
+  storeForecasts?: StoreProfitForecastItem[];
 }
 
 // ── API ──────────────────────────────────────────────────────────

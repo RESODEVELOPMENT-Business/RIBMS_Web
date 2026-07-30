@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import {
   getProfitForecast,
   ProfitForecastData,
+  StoreProfitForecastItem,
 } from '@/services/salesDashboard';
 import { DollarLineIcon, PieChartIcon, BoxCubeIcon } from '@/icons';
 import DashboardFilters from '../components/DashboardFilters';
@@ -134,6 +135,24 @@ export default function ProfitForecastPage() {
       Marketing: c.isMarketing ? 'X' : '',
     }));
 
+    const storeForecastRows = (data.storeForecasts || []).map((s, idx) => ({
+      STT: idx + 1,
+      'Cửa hàng': s.storeName,
+      'DT Thuần MTD (VND)': s.monthToDateNetSales,
+      'Sale TB/ngày (VND)': s.avgSalesPerDay,
+      'COGS thực tế (VND)': s.monthToDateCogs,
+      'Tỷ lệ COGS (%)': s.cogsRatioPercent,
+      'Chi phí vận hành MTD (VND)': s.monthToDateOperatingCost,
+      'Lợi nhuận đến hiện tại (VND)': s.profitToDate,
+      'Doanh số dự kiến tháng (VND)': s.projectedMonthlySales,
+      'Doanh số dự kiến tuần (VND)': s.projectedWeeklySales,
+      'Chi phí NVL dự kiến (VND)': s.projectedMaterialCost,
+      'Chi phí VH dự kiến (VND)': s.projectedOperatingCost,
+      'Tổng chi phí dự kiến tháng (VND)': s.projectedCostMonthly,
+      'Lợi nhuận dự kiến tháng (VND)': s.projectedProfitMonthly,
+      'Lợi nhuận dự kiến tuần (VND)': s.projectedProfitWeekly,
+    }));
+
     exportSheetsToExcel('BaoCao_TinhHinhLoiNhuan', [
       {
         name: 'Tổng quan',
@@ -145,6 +164,7 @@ export default function ProfitForecastPage() {
         }),
       },
       { name: 'Tóm tắt', rows: summaryRows },
+      { name: 'Dự báo theo cửa hàng', rows: storeForecastRows },
       { name: 'Chi phí dự kiến', rows: costRows },
     ]);
   };
@@ -193,7 +213,7 @@ export default function ProfitForecastPage() {
             {' '}— đã qua <strong>{data.elapsedDays}</strong> / {data.daysInMonth} ngày.
           </div>
 
-          {/* Tình hình đến hiện tại */}
+          {/* Tình hình đến hiện tại (Tổng quan Thương hiệu) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <KpiCard
               label="Sale trung bình / ngày"
@@ -217,7 +237,7 @@ export default function ProfitForecastPage() {
             />
           </div>
 
-          {/* Dự kiến cuối tháng */}
+          {/* Dự kiến cuối tháng (Tổng quan Thương hiệu) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <KpiCard
               label="Doanh số dự kiến (tháng)"
@@ -239,6 +259,11 @@ export default function ProfitForecastPage() {
               accent={data.projectedProfitMonthly >= 0 ? 'green' : 'red'}
             />
           </div>
+
+          {/* Bảng dự đoán lợi nhuận theo từng cửa hàng */}
+          {data.storeForecasts && data.storeForecasts.length > 0 && (
+            <StoreProfitForecastTable rows={data.storeForecasts} />
+          )}
 
           {/* Ghi chú giả định */}
           <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 text-sm text-gray-600 dark:text-gray-300">
@@ -288,6 +313,96 @@ export default function ProfitForecastPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function StoreProfitForecastTable({ rows }: { rows: StoreProfitForecastItem[] }) {
+  if (!rows || rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 space-y-4 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+            Dự Đoán Lợi Nhuận Theo Cửa Hàng
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Chi tiết MTD thực tế &amp; dự kiến cuối tháng cho từng cửa hàng trong hệ thống.
+          </p>
+        </div>
+        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300">
+          {rows.length} cửa hàng
+        </span>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+        <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-800/50">
+            <tr>
+              <th className="px-4 py-3 text-center font-bold text-gray-500 uppercase tracking-wider w-12">#</th>
+              <th className="px-4 py-3 text-left font-bold text-gray-500 uppercase tracking-wider">Cửa hàng</th>
+              <th className="px-4 py-3 text-right font-bold text-gray-500 uppercase tracking-wider">Sale TB/ngày</th>
+              <th className="px-4 py-3 text-right font-bold text-gray-500 uppercase tracking-wider">LN Đến HT</th>
+              <th className="px-4 py-3 text-right font-bold text-gray-500 uppercase tracking-wider">COGS (tháng)</th>
+              <th className="px-4 py-3 text-right font-bold text-gray-500 uppercase tracking-wider">DS Dự Kiến</th>
+              <th className="px-4 py-3 text-right font-bold text-gray-500 uppercase tracking-wider">Tổng CP DK</th>
+              <th className="px-4 py-3 text-right font-bold text-gray-500 uppercase tracking-wider">LN Dự Kiến (Tháng)</th>
+              <th className="px-4 py-3 text-right font-bold text-gray-500 uppercase tracking-wider">LN Dự Kiến (Tuần)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {rows.map((s, idx) => {
+              const isProfitPositive = s.projectedProfitMonthly >= 0;
+              return (
+                <tr
+                  key={s.storeId}
+                  className={`hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors ${
+                    isProfitPositive
+                      ? 'bg-emerald-50/30 dark:bg-emerald-950/20'
+                      : 'bg-rose-50/30 dark:bg-rose-950/20'
+                  }`}
+                >
+                  <td className="px-4 py-3 text-center text-gray-500">{idx + 1}</td>
+                  <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100">
+                    {s.storeName}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                    {formatVND(s.avgSalesPerDay)}
+                  </td>
+                  <td className={`px-4 py-3 text-right font-semibold ${s.profitToDate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {formatVND(s.profitToDate)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-amber-600 dark:text-amber-400">
+                    <div>{formatVND(s.monthToDateCogs)}</div>
+                    <div className="text-[11px] text-gray-400 font-normal">~{s.cogsRatioPercent}%</div>
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-brand-600 dark:text-brand-400">
+                    {formatVND(s.projectedMonthlySales)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-amber-700 dark:text-amber-400">
+                    {formatVND(s.projectedCostMonthly)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                      isProfitPositive
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
+                        : 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300'
+                    }`}>
+                      {formatVND(s.projectedProfitMonthly)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">
+                    {formatVND(s.projectedProfitWeekly)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
