@@ -227,29 +227,47 @@ function ProductProfitTable({ rows, title }: { rows: any[]; title: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {rows.map((p, idx) => (
-                <tr key={p.productId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
-                  <td className="px-4 py-2.5 text-center text-gray-500">{idx + 1}</td>
-                  <td className="px-4 py-2.5">
-                    <div className="font-semibold text-gray-800 dark:text-gray-100">{p.productName}</div>
-                    {p.productCode && <div className="text-xs text-gray-400">{p.productCode}</div>}
-                  </td>
-                  <td className="px-4 py-2.5 text-gray-600">{p.categoryName}</td>
-                  <td className="px-4 py-2.5 text-right text-gray-600">{formatNumber(p.quantity)}</td>
-                  <td className="px-4 py-2.5 text-right">{formatVND(p.revenue)}</td>
-                  <td className="px-4 py-2.5 text-right text-amber-600">{formatVND(p.cogs)}</td>
-                  <td className={`px-4 py-2.5 text-right font-bold ${p.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {formatVND(p.grossProfit)}
-                  </td>
-                  <td className={`px-4 py-2.5 text-right font-semibold ${
-                    p.missingCogs ? 'text-gray-400' :
-                    p.grossMargin >= 30 ? 'text-emerald-600' :
-                    p.grossMargin >= 15 ? 'text-amber-600' : 'text-rose-600'
-                  }`}>
-                    {p.missingCogs ? '—' : `${p.grossMargin.toFixed(2)}%`}
-                  </td>
-                </tr>
-              ))}
+              {rows.map((p, idx) => {
+                const isHighMargin = p.grossMargin >= 70;
+                return (
+                  <tr
+                    key={p.productId}
+                    className={`hover:bg-gray-50/80 dark:hover:bg-gray-800/40 ${
+                      p.missingCogs
+                        ? 'hover:bg-gray-50/50 dark:hover:bg-gray-800/20'
+                        : isHighMargin
+                        ? 'bg-emerald-50/40 dark:bg-emerald-950/20'
+                        : 'bg-rose-50/40 dark:bg-rose-950/20'
+                    }`}
+                  >
+                    <td className="px-4 py-2.5 text-center text-gray-500">{idx + 1}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="font-semibold text-gray-800 dark:text-gray-100">{p.productName}</div>
+                      {p.productCode && <div className="text-xs text-gray-400">{p.productCode}</div>}
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-600">{p.categoryName}</td>
+                    <td className="px-4 py-2.5 text-right text-gray-600">{formatNumber(p.quantity)}</td>
+                    <td className="px-4 py-2.5 text-right">{formatVND(p.revenue)}</td>
+                    <td className="px-4 py-2.5 text-right text-amber-600">{formatVND(p.cogs)}</td>
+                    <td className={`px-4 py-2.5 text-right font-bold ${p.grossProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {formatVND(p.grossProfit)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-bold">
+                      {p.missingCogs ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                          isHighMargin
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                            : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300'
+                        }`}>
+                          {p.grossMargin.toFixed(2)}%
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -276,20 +294,36 @@ function CategoryTable({ rows }: { rows: any[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-          {rows.map((c) => (
-            <tr key={c.categoryName} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
-              <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">{c.categoryName}</td>
-              <td className="px-4 py-2.5 text-right text-gray-600">{formatNumber(c.quantity)}</td>
-              <td className="px-4 py-2.5 text-right">{formatVND(c.revenue)}</td>
-              <td className="px-4 py-2.5 text-right text-amber-600">{formatVND(c.cogs)}</td>
-              <td className={`px-4 py-2.5 text-right font-bold ${c.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {formatVND(c.grossProfit)}
-              </td>
-              <td className={`px-4 py-2.5 text-right font-semibold ${c.grossMargin >= 30 ? 'text-emerald-600' : c.grossMargin >= 15 ? 'text-amber-600' : 'text-rose-600'}`}>
-                {c.grossMargin.toFixed(2)}%
-              </td>
-            </tr>
-          ))}
+          {rows.map((c) => {
+            const isHighMargin = c.grossMargin >= 70;
+            return (
+              <tr
+                key={c.categoryName}
+                className={`hover:bg-gray-50/80 dark:hover:bg-gray-800/40 ${
+                  isHighMargin
+                    ? 'bg-emerald-50/40 dark:bg-emerald-950/20'
+                    : 'bg-rose-50/40 dark:bg-rose-950/20'
+                }`}
+              >
+                <td className="px-4 py-2.5 font-semibold text-gray-700 dark:text-gray-200">{c.categoryName}</td>
+                <td className="px-4 py-2.5 text-right text-gray-600">{formatNumber(c.quantity)}</td>
+                <td className="px-4 py-2.5 text-right">{formatVND(c.revenue)}</td>
+                <td className="px-4 py-2.5 text-right text-amber-600">{formatVND(c.cogs)}</td>
+                <td className={`px-4 py-2.5 text-right font-bold ${c.grossProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {formatVND(c.grossProfit)}
+                </td>
+                <td className="px-4 py-2.5 text-right font-bold">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                    isHighMargin
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                      : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300'
+                  }`}>
+                    {c.grossMargin.toFixed(2)}%
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
