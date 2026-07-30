@@ -88,6 +88,7 @@ const AppSidebar: React.FC = () => {
               { name: "Doanh thu cửa hàng", path: "/sales-dashboard/top-store-revenues" },
               { name: "Bảng 9 tuần", path: "/sales-dashboard/weekly-9weeks" },
               { name: "Doanh thu theo thanh toán", path: "/sales-dashboard/store-payment-methods" },
+              { name: "Báo cáo nạp thẻ", path: "/sales-dashboard/top-up-report" },
               { name: "Đơn hàng", path: "/orders" },
             ],
           },
@@ -136,6 +137,7 @@ const AppSidebar: React.FC = () => {
               { name: "Doanh thu cửa hàng", path: "/store/sales-dashboard/top-store-revenues" },
               { name: "Bảng 9 tuần", path: "/store/sales-dashboard/weekly-9weeks" },
               { name: "Doanh thu theo thanh toán", path: "/store/sales-dashboard/store-payment-methods" },
+              { name: "Báo cáo nạp thẻ", path: "/store/sales-dashboard/top-up-report" },
             ],
           },
           {

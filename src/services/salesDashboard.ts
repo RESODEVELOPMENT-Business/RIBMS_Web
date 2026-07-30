@@ -643,3 +643,44 @@ export const getWeeklyBreakdown = async (
   }
   return await apiClient(`/orders/dashboard/weekly-breakdown?${params.toString()}`);
 };
+
+// ===================== Top-Up Report =====================
+
+export interface TopUpDailyTrendItem {
+  date: string;
+  revenue: number;
+  invoices: number;
+}
+
+export interface TopUpStoreItem {
+  storeId: number;
+  storeName: string;
+  districtName?: string | null;
+  revenue: number;
+  invoices: number;
+  sharePercent: number;
+}
+
+export interface TopUpReportData {
+  totalTopUpRevenue: number;
+  totalTopUpInvoices: number;
+  averageTopUpValue: number;
+  dailyTrend: TopUpDailyTrendItem[];
+  storeBreakdown: TopUpStoreItem[];
+}
+
+export const getTopUpReport = async (
+  storeId?: number | null,
+  brandId?: number | null,
+  fromDate?: string,
+  toDate?: string,
+  storeIds?: number[] | null,
+) => {
+  const params = new URLSearchParams();
+  if (storeId) params.append('storeId', storeId.toString());
+  if (brandId) params.append('brandId', brandId.toString());
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  appendStoreIds(params, storeIds);
+  return await apiClient(`/orders/dashboard/top-up-report?${params.toString()}`);
+};
