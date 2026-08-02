@@ -1,12 +1,13 @@
 'use client';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { getStores } from '@/services/stores';
+import { toast } from 'sonner';
+import { getStores, deleteStore } from '@/services/stores';
 import { useAuthStore } from '@/store/authStore';
 import { DataTable } from '@/components/ui/data-table';
 import { SkeletonTable } from '@/components/ui/skeleton-table';
 import { ColumnDef } from '@tanstack/react-table';
-import { PencilIcon } from '@/icons';
+import { PencilIcon, TrashBinIcon } from '@/icons';
 
 export default function StoreListPage() {
   const [data, setData] = useState<any[]>([]);
@@ -69,19 +70,31 @@ export default function StoreListPage() {
       header: 'Actions',
       cell: ({ row }) => {
         const id = row.original.id || row.original.storeId;
+        const handleDelete = async () => {
+          if (!window.confirm('Bạn có chắc muốn xóa cửa hàng này?')) return;
+          try {
+            await deleteStore(id);
+            toast.success('Xóa cửa hàng thành công');
+            fetchData();
+          } catch (err: any) {
+            toast.error(err?.message || 'Xóa cửa hàng thất bại');
+          }
+        };
         return (
           <div className="flex justify-end gap-3">
-            <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
-              <PencilIcon className="w-5 h-5" />
-            </button>
-            <Link href={`/stores/${id}`} className="text-sm font-medium text-gray-700 hover:text-brand-500 dark:text-gray-300">
-              Details
+            <Link href={`/stores/${id}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+              <PencilIcon className="w-4 h-4" />
+              Edit
             </Link>
+            <button onClick={handleDelete} className="inline-flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-600 transition-colors">
+              <TrashBinIcon className="w-4 h-4" />
+              Delete
+            </button>
           </div>
         );
       }
     }
-  ], []);
+  ], [fetchData]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">

@@ -97,6 +97,7 @@ const AppSidebar: React.FC = () => {
             name: "Danh mục & Tiếp thị",
             subItems: [
               { name: "Sản phẩm", path: "/products" },
+              { name: "Cấu hình giá sản phẩm", path: "/product-detail-mappings" },
               { name: "Danh mục", path: "/categories" },
               { name: "Khuyến mãi", path: "/promotions" },
               { name: "Ưu đãi đặc biệt", path: "/special-offers" },

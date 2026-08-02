@@ -44,3 +44,17 @@ export const deleteProductDetailMapping = async (id: number) => {
     method: 'DELETE',
   });
 };
+
+export interface CopyProductDetailMappingsData {
+  sourceStoreId: number;
+  targetStoreId: number;
+  overwriteExisting?: boolean;
+}
+
+export const copyProductDetailMappings = async (data: CopyProductDetailMappingsData) => {
+  return await apiClient('/product-detail-mappings/copy', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+

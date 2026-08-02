@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { api } from '@/services/apiClient';
+import { deleteStore } from '@/services/stores';
 import {
   Cost,
   CostCategory,
@@ -367,6 +368,19 @@ export default function StoreDetailPage() {
     }
   };
 
+  const handleStoreDelete = async () => {
+    if (!confirm('Bạn có chắc muốn xóa cửa hàng này? Hành động này sẽ vô hiệu hóa cửa hàng.')) return;
+    try {
+      const storeId = store?.storeId || store?.id || params?.id;
+      if (!storeId) { toast.error('Không tìm thấy ID cửa hàng'); return; }
+      await deleteStore(storeId);
+      toast.success('Đã xóa cửa hàng');
+      router.push('/stores');
+    } catch (err: any) {
+      toast.error(err?.message || 'Xóa cửa hàng thất bại');
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm('Xóa khoản chi phí này?')) return;
     try {
@@ -393,12 +407,20 @@ export default function StoreDetailPage() {
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Store Detail</h1>
         </div>
         {store && !isEditingInfo && (
-          <button
-            onClick={startEditInfo}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all duration-200 shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Chỉnh sửa thông tin
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={startEditInfo}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all duration-200 shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              Chỉnh sửa thông tin
+            </button>
+            <button
+              onClick={handleStoreDelete}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all duration-200 shadow hover:shadow-md"
+            >
+              Xóa cửa hàng
+            </button>
+          </div>
         )}
       </div>
 

@@ -198,3 +198,17 @@ export const getVouchersByPromotion = async (
     `/promotions/${promotionId}/vouchers?page=${page}&size=${size}`
   );
 };
+
+export interface CopyPromotionStoreMappingsData {
+  sourceStoreId: number;
+  targetStoreId: number;
+  overwriteExisting?: boolean;
+}
+
+export const copyPromotionStoreMappings = async (data: CopyPromotionStoreMappingsData) => {
+  return await apiClient('/promotions/store-mappings/copy', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+

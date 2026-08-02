@@ -1,7 +1,8 @@
 'use client';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { getPromotionsByBrand, PROMOTION_TYPE_LABELS, GIFT_TYPE_LABELS } from '@/services/promotions';
+import { getPromotionsByBrand, PROMOTION_TYPE_LABELS, GIFT_TYPE_LABELS, copyPromotionStoreMappings } from '@/services/promotions';
+import CopyStoreMappingsModal from '@/components/modals/CopyStoreMappingsModal';
 import { DataTable } from '@/components/ui/data-table';
 import { SkeletonTable } from '@/components/ui/skeleton-table';
 import { ColumnDef } from '@tanstack/react-table';
@@ -14,6 +15,7 @@ export default function PromotionListPage() {
   const [size, setSize] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
 
   const fetchData = useCallback(async (pageNum = page, pageSize = size) => {
     setLoading(true);
@@ -132,13 +134,32 @@ export default function PromotionListPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Promotions Management</h1>
         </div>
-        <Link
-          href="/promotions/create"
-          className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium text-sm shadow-sm"
-        >
-          + Create Promotion
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsCopyModalOpen(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm flex items-center gap-2"
+          >
+            <span>📋</span> Sao chép sang cửa hàng
+          </button>
+          <Link
+            href="/promotions/create"
+            className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium text-sm shadow-sm"
+          >
+            + Create Promotion
+          </Link>
+        </div>
       </div>
+
+      <CopyStoreMappingsModal
+        isOpen={isCopyModalOpen}
+        onClose={() => setIsCopyModalOpen(false)}
+        onSuccess={() => fetchData()}
+        title="Sao chép khuyến mãi sang cửa hàng"
+        description="Sao chép danh sách chương trình khuyến mãi áp dụng từ một cửa hàng nguồn sang cửa hàng đích."
+        onCopy={(sourceStoreId, targetStoreId, overwriteExisting) =>
+          copyPromotionStoreMappings({ sourceStoreId, targetStoreId, overwriteExisting })
+        }
+      />
 
       <div className="bg-white rounded-lg shadow dark:bg-gray-800 p-6">
         {loading ? (

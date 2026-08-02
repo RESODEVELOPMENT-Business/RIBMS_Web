@@ -1,7 +1,8 @@
 'use client';
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { getProductDetailMappings, deleteProductDetailMapping } from '@/services/productDetailMappings';
+import { getProductDetailMappings, deleteProductDetailMapping, copyProductDetailMappings } from '@/services/productDetailMappings';
+import CopyStoreMappingsModal from '@/components/modals/CopyStoreMappingsModal';
 import { useAuthStore } from '@/store/authStore';
 import { DataTable } from '@/components/ui/data-table';
 import { SkeletonTable } from '@/components/ui/skeleton-table';
@@ -17,6 +18,7 @@ export default function ProductDetailMappingListPage() {
   const [size, setSize] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
     storeId: '',
@@ -164,10 +166,29 @@ export default function ProductDetailMappingListPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Product Store Mappings Management</h1>
-        <Link href="/product-detail-mappings/create" className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium text-sm">
-          + Create Mapping
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsCopyModalOpen(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm flex items-center gap-2"
+          >
+            <span>📋</span> Sao chép sang cửa hàng
+          </button>
+          <Link href="/product-detail-mappings/create" className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium text-sm shadow-sm">
+            + Create Mapping
+          </Link>
+        </div>
       </div>
+
+      <CopyStoreMappingsModal
+        isOpen={isCopyModalOpen}
+        onClose={() => setIsCopyModalOpen(false)}
+        onSuccess={() => fetchData()}
+        title="Sao chép sản phẩm sang cửa hàng"
+        description="Sao chép danh sách giá & sản phẩm từ một cửa hàng nguồn sang cửa hàng đích."
+        onCopy={(sourceStoreId, targetStoreId, overwriteExisting) =>
+          copyProductDetailMappings({ sourceStoreId, targetStoreId, overwriteExisting })
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow dark:bg-gray-800 p-4">
