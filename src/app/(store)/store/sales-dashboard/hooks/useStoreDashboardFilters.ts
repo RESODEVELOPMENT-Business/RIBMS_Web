@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { toVietnamDateStr, startOfVietnamDay } from '@/lib/vietnamDate';
 
 /**
  * Simplified hook for store-level sales dashboard pages.
@@ -12,12 +13,13 @@ export function useStoreDashboardFilters(initialDays = 0) {
   const storeId = useAuthStore((state) => state.user?.adminStoreId);
 
   const [fromDate, setFromDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - initialDays);
-    return d.toISOString().split('T')[0];
+    if (initialDays === 0) return toVietnamDateStr(new Date());
+    const d = startOfVietnamDay(new Date());
+    d.setDate(d.getDate() - (initialDays > 0 ? initialDays - 1 : 0));
+    return toVietnamDateStr(d);
   });
   const [toDate, setToDate] = useState<string>(() =>
-    new Date().toISOString().split('T')[0],
+    toVietnamDateStr(new Date()),
   );
 
   const setDateRange = (from: string, to: string) => {

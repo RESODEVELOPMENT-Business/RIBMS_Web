@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getInvoiceStatistics, InvoiceStatisticsDto } from '@/services/invoiceApi';
+import { toVietnamDateStr, startOfVietnamDay } from '@/lib/vietnamDate';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -19,12 +20,12 @@ export default function InvoiceStatisticsPage() {
   const [stats, setStats] = useState<InvoiceStatisticsDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(1);
-    return d.toISOString().split('T')[0];
+    const vnToday = startOfVietnamDay(new Date());
+    const first = new Date(vnToday.getFullYear(), vnToday.getMonth(), 1);
+    return toVietnamDateStr(first);
   });
   const [toDate, setToDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return toVietnamDateStr(new Date());
   });
   const [expandedStore, setExpandedStore] = useState<string | null>(null);
 

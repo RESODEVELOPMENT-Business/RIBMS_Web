@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import DatePicker from '@/components/form/date-picker';
+import { COMMON_PRESETS, getPresetDateRange, toVietnamDateStr } from '@/lib/vietnamDate';
 import {
   getInvoiceBrands,
   getInvoiceStoresByBrandCode,
@@ -82,13 +83,7 @@ function getStatusBadge(status: number) {
   );
 }
 
-const PRESETS = [
-  { label: 'Hôm nay', days: 0 },
-  { label: 'Hôm qua', days: 1, type: 'yesterday' },
-  { label: '3 ngày qua', days: 3 },
-  { label: '7 ngày qua', days: 7 },
-  { label: '30 ngày qua', days: 30 },
-];
+const PRESETS = COMMON_PRESETS;
 
 export default function InvoicesPage() {
   const [invoicesData, setInvoicesData] = useState<PaginatedList<InvoiceDto> | null>(null);
@@ -100,12 +95,8 @@ export default function InvoicesPage() {
   // Filters
   const [searchKey, setSearchKey] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [fromDate, setFromDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  });
-  const [toDate, setToDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState<string>(() => getPresetDateRange('7-days').fromDate);
+  const [toDate, setToDate] = useState<string>(() => getPresetDateRange('7-days').toDate);
   
   // Pagination & Loading
   const [page, setPage] = useState<number>(1);
@@ -184,11 +175,9 @@ export default function InvoicesPage() {
     setSearchKey('');
     setStatusFilter('all');
     
-    const today = new Date();
-    const start = new Date();
-    start.setDate(today.getDate() - 7);
-    setFromDate(start.toISOString().split('T')[0]);
-    setToDate(today.toISOString().split('T')[0]);
+    const { fromDate: f, toDate: t } = getPresetDateRange('7-days');
+    setFromDate(f);
+    setToDate(t);
 
     setSelectedBrandCode('');
     setStores([]);
@@ -196,20 +185,10 @@ export default function InvoicesPage() {
     setPage(1);
   };
 
-  const applyPreset = (preset: typeof PRESETS[number]) => {
-    const today = new Date();
-    if (preset.type === 'yesterday') {
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
-      const yStr = yesterday.toISOString().split('T')[0];
-      setFromDate(yStr);
-      setToDate(yStr);
-    } else {
-      const start = new Date();
-      start.setDate(today.getDate() - preset.days);
-      setFromDate(start.toISOString().split('T')[0]);
-      setToDate(today.toISOString().split('T')[0]);
-    }
+  const applyPreset = (preset: (typeof PRESETS)[number]) => {
+    const { fromDate: f, toDate: t } = getPresetDateRange(preset.type);
+    setFromDate(f);
+    setToDate(t);
     setPage(1);
   };
 

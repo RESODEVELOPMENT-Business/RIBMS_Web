@@ -8,6 +8,7 @@ import { getOrders, updateOrder, OrderItem } from '@/services/orders';
 import { getPaymentTypesByBrand, PaymentType } from '@/services/paymentTypes';
 import { Modal } from '@/components/ui/modal';
 import DatePicker from '@/components/form/date-picker';
+import { getPresetDateRange } from '@/lib/vietnamDate';
 import {
   TaskIcon,
   GridIcon
@@ -62,14 +63,8 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Date filters (defaults: from 7 days ago to today)
-  const [fromDate, setFromDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  });
-  const [toDate, setToDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+  const [fromDate, setFromDate] = useState<string>(() => getPresetDateRange('7-days').fromDate);
+  const [toDate, setToDate] = useState<string>(() => getPresetDateRange('7-days').toDate);
 
   // Pagination
   const [page, setPage] = useState<number>(1);

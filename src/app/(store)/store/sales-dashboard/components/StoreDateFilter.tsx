@@ -2,6 +2,7 @@
 
 import React, { useCallback } from 'react';
 import DatePicker from '@/components/form/date-picker';
+import { COMMON_PRESETS, getPresetDateRange } from '@/lib/vietnamDate';
 
 interface StoreDateFilterProps {
   fromDate: string;
@@ -11,13 +12,7 @@ interface StoreDateFilterProps {
   hideDateRange?: boolean;
 }
 
-const PRESETS = [
-  { label: 'Hôm nay', days: 0 },
-  { label: 'Hôm qua', days: 1, type: 'yesterday' },
-  { label: '3 ngày qua', days: 3 },
-  { label: '7 ngày qua', days: 7 },
-  { label: '30 ngày qua', days: 30 },
-];
+const PRESETS = COMMON_PRESETS;
 
 /**
  * Simplified date-only filter bar for store-level dashboard pages.
@@ -45,20 +40,8 @@ export default function StoreDateFilter({
   );
 
   const applyPreset = (preset: (typeof PRESETS)[number]) => {
-    const today = new Date();
-    if (preset.type === 'yesterday') {
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
-      const yStr = yesterday.toISOString().split('T')[0];
-      onDateRangeChange(yStr, yStr);
-    } else {
-      const start = new Date();
-      start.setDate(today.getDate() - preset.days);
-      onDateRangeChange(
-        start.toISOString().split('T')[0],
-        today.toISOString().split('T')[0],
-      );
-    }
+    const { fromDate, toDate } = getPresetDateRange(preset.type);
+    onDateRangeChange(fromDate, toDate);
   };
 
   if (hideDateRange) return null;

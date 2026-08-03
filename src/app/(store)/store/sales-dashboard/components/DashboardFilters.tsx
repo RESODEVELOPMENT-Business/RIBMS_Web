@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DatePicker from '@/components/form/date-picker';
 import { ChevronDownIcon, ChevronUpIcon } from '@/icons';
+import { COMMON_PRESETS, getPresetDateRange } from '@/lib/vietnamDate';
 
 export interface DashboardFiltersProps {
   stores: any[];
@@ -21,13 +22,7 @@ export interface DashboardFiltersProps {
   hideDateRange?: boolean;
 }
 
-const PRESETS = [
-  { label: 'Hôm nay', days: 0 },
-  { label: 'Hôm qua', days: 1, type: 'yesterday' },
-  { label: '3 ngày qua', days: 3 },
-  { label: '7 ngày qua', days: 7 },
-  { label: '30 ngày qua', days: 30 },
-];
+const PRESETS = COMMON_PRESETS;
 
 export default function DashboardFilters({
   stores,
@@ -59,21 +54,9 @@ export default function DashboardFilters({
     [onDateRangeChange],
   );
 
-  const applyPreset = (preset: typeof PRESETS[number]) => {
-    const today = new Date();
-    if (preset.type === 'yesterday') {
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
-      const yStr = yesterday.toISOString().split('T')[0];
-      onDateRangeChange(yStr, yStr);
-    } else {
-      const start = new Date();
-      start.setDate(today.getDate() - preset.days);
-      onDateRangeChange(
-        start.toISOString().split('T')[0],
-        today.toISOString().split('T')[0],
-      );
-    }
+  const applyPreset = (preset: (typeof PRESETS)[number]) => {
+    const { fromDate, toDate } = getPresetDateRange(preset.type);
+    onDateRangeChange(fromDate, toDate);
   };
 
   // State & Ref for Multi-select dropdown

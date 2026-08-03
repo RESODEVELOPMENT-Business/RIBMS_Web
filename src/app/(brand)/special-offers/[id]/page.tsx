@@ -11,6 +11,8 @@ import {
   REDEMPTION_FLOW_LABELS,
 } from '@/services/specialOffers';
 import { getProducts } from '@/services/products';
+import { getStores } from '@/services/stores';
+import { useAuthStore } from '@/store/authStore';
 import { api } from '@/services/apiClient';
 
 const inputCls = 'w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-brand-400 dark:focus:ring-brand-400/20';
@@ -32,6 +34,8 @@ export default function SpecialOfferDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [stores, setStores] = useState<any[]>([]);
+  const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
   const [selectedCustomers, setSelectedCustomers] = useState<any[]>([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -47,7 +51,16 @@ export default function SpecialOfferDetailPage() {
   useEffect(() => {
     fetchOffer();
     fetchProducts();
+    fetchStores();
   }, [id]);
+
+  const fetchStores = async () => {
+    try {
+      const brandId = useAuthStore.getState().user?.brandId;
+      const res = await getStores(1, 200, brandId || undefined);
+      if (res?.data) setStores(res.data.items || res.data);
+    } catch { /* ignore */ }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -111,6 +124,9 @@ export default function SpecialOfferDetailPage() {
       p.find(c => c.customerId === customer.customerId) ? p.filter(c => c.customerId !== customer.customerId) : [...p, customer]);
   const removeCustomer = (id: number) => setSelectedCustomers(p => p.filter(c => c.customerId !== id));
 
+  const toggleStore = (storeId: number) =>
+    setSelectedStoreIds(p => p.includes(storeId) ? p.filter(id => id !== storeId) : [...p, storeId]);
+
   const addBenefitRow = () => setBenefitRows(p => [...p, { benefitType: 0, sortOrder: p.length }]);
   const removeBenefitRow = (idx: number) => setBenefitRows(p => p.filter((_, i) => i !== idx).map((r, i) => ({ ...r, sortOrder: i })));
   const updateBenefitRow = (idx: number, field: string, value: any) =>
@@ -146,6 +162,7 @@ export default function SpecialOfferDetailPage() {
       (c: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.customerId === c.customerId) === i
     );
     setSelectedCustomers(uniqueCustomers);
+    setSelectedStoreIds(offer?.storeIds || []);
 
     setEditing(true);
   };
@@ -174,6 +191,7 @@ export default function SpecialOfferDetailPage() {
       maxUsagePerDay: fd.get('maxUsagePerDay') ? Number(fd.get('maxUsagePerDay')) : null,
       maxUsagePerStore: fd.get('maxUsagePerStore') ? Number(fd.get('maxUsagePerStore')) : null,
       customerIds: selectedCustomers.map(c => c.customerId),
+      storeIds: selectedStoreIds,
       benefitItems: benefitRows.map((r, i) => ({ ...r, sortOrder: i })),
     };
 
@@ -238,7 +256,13 @@ export default function SpecialOfferDetailPage() {
               <InfoRow label="Max Per Customer" value={offer.maxUsagePerCustomer?.toString() || '—'} />
               <InfoRow label="Max Per Day" value={offer.maxUsagePerDay?.toString() || '—'} />
               <InfoRow label="Max Per Store" value={offer.maxUsagePerStore?.toString() || '—'} />
-              <InfoRow label="Stores" value={(offer.storeIds?.length > 0 ? offer.storeIds.join(', ') : 'All')} />
+              <InfoRow label="Stores" value={
+                offer.storeIds?.length > 0
+                  ? (stores.length > 0
+                      ? offer.storeIds.map((sid: number) => stores.find(s => (s.id || s.storeId) === sid)?.name || sid).join(', ')
+                      : offer.storeIds.join(', '))
+                  : 'All'
+              } />
             </div>
             {offer.description && <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800"><InfoRow label="Description" value={offer.description} /></div>}
           </div>
@@ -422,6 +446,38 @@ export default function SpecialOfferDetailPage() {
                 </svg>
                 Search & Add Customers
               </button>
+            </div>
+
+            {/* Stores */}
+            <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/50">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Stores</h2>
+                {stores.length > 0 && (
+                  <div className="flex gap-1.5">
+                    <button type="button" onClick={() => setSelectedStoreIds(stores.map(s => s.id || s.storeId))}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${selectedStoreIds.length === stores.length ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'}`}>All</button>
+                    <button type="button" onClick={() => setSelectedStoreIds([])}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${selectedStoreIds.length === 0 ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'}`}>None</button>
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 max-h-48 space-y-0.5 overflow-y-auto rounded-lg border border-gray-100 p-2 dark:border-gray-800">
+                {stores.length === 0 && <p className="py-6 text-center text-sm text-gray-400">Loading stores...</p>}
+                {stores.map(store => {
+                  const sId = store.id || store.storeId;
+                  const isChecked = selectedStoreIds.includes(sId);
+                  return (
+                    <label key={sId}
+                      className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isChecked ? 'bg-brand-50/50 dark:bg-brand-900/10' : ''}`}>
+                      <input type="checkbox" checked={isChecked}
+                        onChange={() => toggleStore(sId)}
+                        className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/20" />
+                      <span className="text-gray-700 dark:text-gray-300">{store.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-gray-400">Leave unchecked to apply to all stores.</p>
             </div>
           </div>
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DatePicker from '@/components/form/date-picker';
 import { ChevronDownIcon, ChevronUpIcon } from '@/icons';
-import { toVietnamDateStr, startOfVietnamDay } from '@/lib/vietnamDate';
+import { COMMON_PRESETS, getPresetDateRange } from '@/lib/vietnamDate';
 
 export interface DashboardFiltersProps {
   stores: any[];
@@ -22,17 +22,7 @@ export interface DashboardFiltersProps {
   hideDateRange?: boolean;
 }
 
-const PRESETS = [
-  { label: 'Hôm nay', days: 0 },
-  { label: 'Hôm qua', days: 1, type: 'yesterday' },
-  { label: '3 ngày qua', days: 3 },
-  { label: 'Tuần này', days: 7, type: 'week' },
-  { label: 'Tuần trước', days: 7, type: 'week-past' },
-  { label: 'Tháng này', days: 30, type: 'month' },
-  { label: 'Tháng trước', days: 30, type: 'month-past' },
-  { label: '7 ngày qua', days: 7 },
-  { label: '30 ngày qua', days: 30 },
-];
+const PRESETS = COMMON_PRESETS;
 
 export default function DashboardFilters({
   stores,
@@ -64,53 +54,9 @@ export default function DashboardFilters({
     [onDateRangeChange],
   );
 
-  const applyPreset = (preset: typeof PRESETS[number]) => {
-    // Tính toán dựa trên "hôm nay" theo múi giờ Việt Nam (UTC+7) để không lệch ngày
-    // khi browser của người dùng nằm ở timezone khác.
-    const vnToday = startOfVietnamDay(new Date());
-    const toStr = toVietnamDateStr(vnToday);
-
-    // Trả về ngày Thứ 2 (đầu tuần ISO) của tuần chứa d (theo ngày VN).
-    const startOfWeek = (d: Date) => {
-      const day = d.getDay(); // 0=CN .. 6=T7
-      const diff = day === 0 ? 6 : day - 1;
-      const mon = new Date(d);
-      mon.setDate(d.getDate() - diff);
-      mon.setHours(0, 0, 0, 0);
-      return mon;
-    };
-
-    if (preset.type === 'yesterday') {
-      const yesterday = new Date(vnToday);
-      yesterday.setDate(vnToday.getDate() - 1);
-      const yStr = toVietnamDateStr(yesterday);
-      onDateRangeChange(yStr, yStr);
-    } else if (preset.type === 'week') {
-      // Tuần này: Thứ 2 đầu tuần → hôm nay
-      const mon = startOfWeek(vnToday);
-      onDateRangeChange(toVietnamDateStr(mon), toStr);
-    } else if (preset.type === 'week-past') {
-      // Tuần trước: Thứ 2 → Chủ nhật của tuần trước
-      const mon = startOfWeek(vnToday);
-      mon.setDate(mon.getDate() - 7);
-      const sun = new Date(mon);
-      sun.setDate(mon.getDate() + 6);
-      onDateRangeChange(toVietnamDateStr(mon), toVietnamDateStr(sun));
-    } else if (preset.type === 'month') {
-      // Tháng này: ngày 1 → hôm nay
-      const first = new Date(vnToday.getFullYear(), vnToday.getMonth(), 1);
-      onDateRangeChange(toVietnamDateStr(first), toStr);
-    } else if (preset.type === 'month-past') {
-      // Tháng trước: ngày 1 tháng trước → ngày cuối tháng trước
-      const first = new Date(vnToday.getFullYear(), vnToday.getMonth() - 1, 1);
-      const last = new Date(vnToday.getFullYear(), vnToday.getMonth(), 0);
-      onDateRangeChange(toVietnamDateStr(first), toVietnamDateStr(last));
-    } else {
-      // Cửa sổ lăn theo số ngày (Hôm nay / 3,7,30 ngày qua)
-      const start = new Date(vnToday);
-      start.setDate(vnToday.getDate() - preset.days);
-      onDateRangeChange(toVietnamDateStr(start), toStr);
-    }
+  const applyPreset = (preset: (typeof PRESETS)[number]) => {
+    const { fromDate, toDate } = getPresetDateRange(preset.type);
+    onDateRangeChange(fromDate, toDate);
   };
 
   // State & Ref for Multi-select dropdown
