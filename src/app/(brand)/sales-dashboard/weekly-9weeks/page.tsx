@@ -8,7 +8,7 @@ import {
   getWeeklyBreakdown,
   WeeklyBreakdownData,
 } from '@/services/salesDashboard';
-import { DollarLineIcon, TaskIcon, ListIcon } from '@/icons';
+import { BoxIcon, DollarLineIcon, TaskIcon, ListIcon } from '@/icons';
 import DashboardFilters from '../components/DashboardFilters';
 import ExportExcelButton from '../components/ExportExcelButton';
 import { useDashboardFilters } from '../hooks/useDashboardFilters';
@@ -23,17 +23,19 @@ const formatVND = (v: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v || 0);
 const formatNumber = (v: number) => new Intl.NumberFormat('vi-VN').format(v || 0);
 
-type MetricTab = 'revenue' | 'invoiceCount' | 'avgBill';
+type MetricTab = 'revenue' | 'invoiceCount' | 'itemQuantity' | 'avgBill';
 
 const TABS: { key: MetricTab; label: string; icon?: React.ReactNode }[] = [
   { key: 'revenue', label: 'Doanh thu sau giảm giá', icon: <DollarLineIcon className="w-4 h-4" /> },
   { key: 'invoiceCount', label: 'Số lượng bill', icon: <TaskIcon className="w-4 h-4" /> },
+  { key: 'itemQuantity', label: 'Số lượng món', icon: <BoxIcon className="w-4 h-4" /> },
   { key: 'avgBill', label: 'Trung bình bill', icon: <ListIcon className="w-4 h-4" /> },
 ];
 
 const CHART_COLORS: Record<MetricTab, string> = {
   revenue: '#10b981',
   invoiceCount: '#6366f1',
+  itemQuantity: '#465fff',
   avgBill: '#f59e0b',
 };
 
@@ -81,9 +83,9 @@ export default function Weekly9WeeksPage() {
         selectedStoreIds.length > 0 ? selectedStoreIds : null,
       );
       setData(res?.data ?? null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch weekly breakdown:', err);
-      toast.error(err.message || 'Không thể tải báo cáo 9 tuần');
+      toast.error(err instanceof Error ? err.message : 'Không thể tải báo cáo 9 tuần');
       setData(null);
     } finally {
       setLoading(false);
@@ -91,13 +93,14 @@ export default function Weekly9WeeksPage() {
   };
 
   const getMetricValue = (
-    store: { revenueByWeek: number[]; invoiceCountByWeek: number[]; avgBillByWeek: number[] },
+    store: { revenueByWeek: number[]; invoiceCountByWeek: number[]; itemQuantityByWeek: number[]; avgBillByWeek: number[] },
     index: number,
     tab: MetricTab,
   ): number => {
     switch (tab) {
       case 'revenue': return store.revenueByWeek[index] ?? 0;
       case 'invoiceCount': return store.invoiceCountByWeek[index] ?? 0;
+      case 'itemQuantity': return store.itemQuantityByWeek[index] ?? 0;
       case 'avgBill': return store.avgBillByWeek[index] ?? 0;
     }
   };
@@ -107,12 +110,13 @@ export default function Weekly9WeeksPage() {
     switch (tab) {
       case 'revenue': return data.totals.revenueByWeek[index] ?? 0;
       case 'invoiceCount': return data.totals.invoiceCountByWeek[index] ?? 0;
+      case 'itemQuantity': return data.totals.itemQuantityByWeek[index] ?? 0;
       case 'avgBill': return data.totals.avgBillByWeek[index] ?? 0;
     }
   };
 
   const formatMetric = (value: number, tab: MetricTab): string => {
-    return tab === 'invoiceCount' || (tab === 'avgBill' && value < 100000)
+    return tab === 'invoiceCount' || tab === 'itemQuantity' || (tab === 'avgBill' && value < 100000)
       ? formatNumber(value)
       : formatVND(value);
   };
@@ -211,14 +215,14 @@ export default function Weekly9WeeksPage() {
 
     const sheets = TABS.map((tab) => {
       const dataRows = data.stores.map((store) => {
-        const row: Record<string, any> = { 'Cửa hàng': store.storeName };
+        const row: Record<string, string | number> = { 'Cửa hàng': store.storeName };
         data.weeks.forEach((_w, i) => {
           row[_w.label] = getMetricValue(store, i, tab.key);
         });
         return row;
       });
 
-      const totalRow: Record<string, any> = { 'Cửa hàng': 'TỔNG' };
+      const totalRow: Record<string, string | number> = { 'Cửa hàng': 'TỔNG' };
       data.weeks.forEach((_w, i) => {
         totalRow[_w.label] = getTotalValue(i, tab.key);
       });
@@ -245,7 +249,7 @@ export default function Weekly9WeeksPage() {
             Bảng 9 Tuần
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            BC — Doanh thu, số bill, trung bình bill theo tuần theo từng cửa hàng
+            BC — Doanh thu, số bill, số lượng món, trung bình bill theo tuần theo từng cửa hàng
           </p>
         </div>
         <ExportExcelButton onClick={handleExport} disabled={loading || !data} />

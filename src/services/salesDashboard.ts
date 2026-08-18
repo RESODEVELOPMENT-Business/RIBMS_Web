@@ -632,12 +632,14 @@ export interface StoreWeeklyRow {
   storeName: string;
   revenueByWeek: number[];
   invoiceCountByWeek: number[];
+  itemQuantityByWeek: number[];
   avgBillByWeek: number[];
 }
 
 export interface WeeklyTotalsRow {
   revenueByWeek: number[];
   invoiceCountByWeek: number[];
+  itemQuantityByWeek: number[];
   avgBillByWeek: number[];
 }
 
