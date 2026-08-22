@@ -1,7 +1,6 @@
 "use client";
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
@@ -77,6 +76,7 @@ const AppSidebar: React.FC = () => {
             name: "Tổng Quan",
             subItems: [
               { name: "Tổng quan doanh thu", path: "/sales-dashboard" },
+              { name: "Mục tiêu KPI (Target)", path: "/sales-dashboard/target-progress" },
               { name: "Doanh thu cửa hàng", path: "/sales-dashboard/top-store-revenues" },
               { name: "So sánh kỳ", path: "/sales-dashboard/comparison" },
               { name: "Báo cáo đơn hàng Block 4h", path: "/sales-dashboard/orders-report" },
@@ -89,6 +89,7 @@ const AppSidebar: React.FC = () => {
               { name: "Bảng 9 tuần", path: "/sales-dashboard/weekly-9weeks" },
               { name: "Doanh thu theo thanh toán", path: "/sales-dashboard/store-payment-methods" },
               { name: "Báo cáo nạp thẻ", path: "/sales-dashboard/top-up-report" },
+              { name: "Đánh giá & CSAT", path: "/feedback-reports" },
               { name: "Đơn hàng", path: "/orders" },
             ],
           },
@@ -102,6 +103,8 @@ const AppSidebar: React.FC = () => {
               { name: "Khuyến mãi", path: "/promotions" },
               { name: "Ưu đãi đặc biệt", path: "/special-offers" },
               { name: "Tích Stamp", path: "/stamp-programs" },
+              { name: "Đặc quyền thành viên", path: "/loyalty-tiers" },
+              { name: "Đổi thưởng bằng điểm", path: "/point-rewards" },
             ],
           },
           {
@@ -109,6 +112,8 @@ const AppSidebar: React.FC = () => {
             name: "Thiết Lập Hệ Thống",
             subItems: [
               { name: "Cửa hàng", path: "/stores" },
+              { name: "Mục tiêu KPI", path: "/target-settings" },
+              { name: "Cấu hình đánh giá", path: "/feedback-settings" },
               { name: "Phương thức thanh toán", path: "/payment-types" },
               { name: "Danh mục chi phí", path: "/cost-categories" },
             ],
@@ -127,6 +132,7 @@ const AppSidebar: React.FC = () => {
             name: "Tổng Quan",
             subItems: [
               { name: "Tổng quan doanh thu", path: "/store/shift-sales" },
+              { name: "Mục tiêu KPI (Target)", path: "/sales-dashboard/target-progress" },
               { name: "So sánh kỳ", path: "/store/sales-dashboard/comparison" },
               { name: "Báo cáo đơn hàng", path: "/store/sales-dashboard/orders-report" },
               { name: "Báo cáo sản phẩm", path: "/store/sales-dashboard/products-report" },
@@ -139,6 +145,7 @@ const AppSidebar: React.FC = () => {
               { name: "Bảng 9 tuần", path: "/store/sales-dashboard/weekly-9weeks" },
               { name: "Doanh thu theo thanh toán", path: "/store/sales-dashboard/store-payment-methods" },
               { name: "Báo cáo nạp thẻ", path: "/store/sales-dashboard/top-up-report" },
+              { name: "Đánh giá & CSAT", path: "/feedback-reports" },
             ],
           },
           {
@@ -153,14 +160,74 @@ const AppSidebar: React.FC = () => {
     }
   };
 
-  const navItems = getNavItems();
+  const navItems = useMemo(() => getNavItems(), [user?.role]);
+
+  const [openSubmenu, setOpenSubmenu] = useState<{
+    type: "main" | "others";
+    index: number;
+  } | null>(null);
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
+    {}
+  );
+  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const isActive = useCallback((path: string) => path === pathname, [pathname]);
+
+  useEffect(() => {
+    let submenuMatched = false;
+    ["main"].forEach((menuType) => {
+      const items = navItems;
+      items.forEach((nav, index) => {
+        if (nav.subItems) {
+          nav.subItems.forEach((subItem) => {
+            if (isActive(subItem.path)) {
+              setOpenSubmenu({
+                type: menuType as "main" | "others",
+                index,
+              });
+              submenuMatched = true;
+            }
+          });
+        }
+      });
+    });
+
+    if (!submenuMatched) {
+      setOpenSubmenu(null);
+    }
+  }, [pathname, isActive, navItems]);
+
+  useEffect(() => {
+    if (openSubmenu !== null) {
+      const key = `${openSubmenu.type}-${openSubmenu.index}`;
+      if (subMenuRefs.current[key]) {
+        setSubMenuHeight((prevHeights) => ({
+          ...prevHeights,
+          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
+        }));
+      }
+    }
+  }, [openSubmenu]);
+
+  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
+    setOpenSubmenu((prevOpenSubmenu) => {
+      if (
+        prevOpenSubmenu &&
+        prevOpenSubmenu.type === menuType &&
+        prevOpenSubmenu.index === index
+      ) {
+        return null;
+      }
+      return { type: menuType, index };
+    });
+  };
 
   const renderMenuItems = (
-    navItems: NavItem[],
+    items: NavItem[],
     menuType: "main" | "others"
   ) => (
     <ul className="flex flex-col gap-4">
-      {navItems.map((nav, index) => (
+      {items.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
             <button
@@ -272,70 +339,6 @@ const AppSidebar: React.FC = () => {
     </ul>
   );
 
-  const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others";
-    index: number;
-  } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
-  );
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // const isActive = (path: string) => path === pathname;
-  const isActive = useCallback((path: string) => path === pathname, [pathname]);
-
-  useEffect(() => {
-    // Check if the current path matches any submenu item
-    let submenuMatched = false;
-    ["main"].forEach((menuType) => {
-      const items = navItems;
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
-              submenuMatched = true;
-            }
-          });
-        }
-      });
-    });
-
-    // If no submenu item matches, close the open submenu
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
-    }
-  }, [pathname, isActive]);
-
-  useEffect(() => {
-    // Set the height of the submenu items when the submenu is opened
-    if (openSubmenu !== null) {
-      const key = `${openSubmenu.type}-${openSubmenu.index}`;
-      if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
-          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
-        }));
-      }
-    }
-  }, [openSubmenu]);
-
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-      return { type: menuType, index };
-    });
-  };
-
   return (
     <aside
       className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
@@ -360,7 +363,6 @@ const AppSidebar: React.FC = () => {
           aria-label="RIBMS Home"
         >
           {isExpanded || isHovered || isMobileOpen ? (
-            // Full Premium Logo (RIBMS)
             <svg width="150" height="40" viewBox="0 0 150 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-auto h-10">
               <defs>
                 <linearGradient id="logo-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -376,25 +378,18 @@ const AppSidebar: React.FC = () => {
                 </filter>
               </defs>
 
-              {/* R Brandmark */}
               <g filter="url(#logo-glow)">
-                {/* Back vertical pillar */}
                 <rect x="6" y="6" width="6.5" height="28" rx="3.25" fill="url(#logo-grad-1)" />
-                {/* Flowing brand loop */}
                 <path d="M12.5 9.5C12.5 7.567 14.067 6 16 6H23C27.4183 6 31 9.58172 31 14C31 18.4183 27.4183 22 23 22H12.5V9.5Z" fill="url(#logo-grad-2)" fillOpacity="0.95" />
-                {/* Dynamic arrow extension representing metrics / growth */}
                 <path d="M18.5 20.5L26.5 31.5C27.3 32.5 28.7 32.5 29.5 31.5L30.2 30.5C31 29.5 30.8 28 29.8 27.2L22 21H18.5V20.5Z" fill="url(#logo-grad-1)" />
-                {/* Integrated smart bead linking core domains */}
                 <circle cx="20.5" cy="20.5" r="3" fill="#36BFFA" />
               </g>
 
-              {/* Sophisticated typography with gradient styling */}
               <text x="44" y="27" fontFamily="Outfit, sans-serif" fontSize="21" fontWeight="800" letterSpacing="1.2" className="fill-gray-900 dark:fill-white font-outfit">
                 RIBMS
               </text>
             </svg>
           ) : (
-            // Collapsed Premium Logo (R)
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10">
               <defs>
                 <linearGradient id="logo-grad-1-col" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -411,13 +406,9 @@ const AppSidebar: React.FC = () => {
               </defs>
 
               <g filter="url(#logo-glow-col)">
-                {/* Back vertical pillar */}
                 <rect x="8" y="6" width="6.5" height="28" rx="3.25" fill="url(#logo-grad-1-col)" />
-                {/* Flowing brand loop */}
                 <path d="M14.5 9.5C14.5 7.567 16.067 6 18 6H25C29.4183 6 33 9.58172 33 14C33 18.4183 29.4183 22 25 22H14.5V9.5Z" fill="url(#logo-grad-2-col)" fillOpacity="0.95" />
-                {/* Dynamic leg/arrow */}
                 <path d="M20.5 20.5L28.5 31.5C29.3 32.5 30.7 32.5 31.5 31.5L32.2 30.5C33 29.5 32.8 28 31.8 27.2L24 21H20.5V20.5Z" fill="url(#logo-grad-1-col)" />
-                {/* Connection point */}
                 <circle cx="22.5" cy="20.5" r="3" fill="#36BFFA" />
               </g>
             </svg>

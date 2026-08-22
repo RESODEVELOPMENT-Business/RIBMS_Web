@@ -23,6 +23,12 @@ export interface CreateRewardTierData {
   rewardType: number;
   rewardValue?: string;
   rewardDescription: string;
+  brandLoyaltyTierId?: number | null;
+  productId?: number | null;
+  productItemId?: number | null;
+  quantity?: number;
+  active?: boolean;
+  sortOrder?: number;
 }
 
 export interface CreateStampProgramData {
@@ -36,6 +42,35 @@ export interface CreateStampProgramData {
   storeIds: number[];
   conditions: CreateConditionData[];
   rewardTiers: CreateRewardTierData[];
+}
+
+export interface StampRewardOption {
+  id?: number;
+  stampRequired: number;
+  rewardType: number | string;
+  rewardValue?: string;
+  rewardDescription?: string;
+  brandLoyaltyTierId?: number | null;
+  productId?: number | null;
+  productItemId?: number | null;
+  quantity?: number;
+  active?: boolean;
+  sortOrder?: number;
+  productName?: string | null;
+  productItemName?: string | null;
+}
+
+export interface StampProgram {
+  id: number;
+  brandId: number;
+  displayName: string;
+  description?: string | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+  isActive: boolean;
+  conditionLogic: string;
+  storeNames?: string[];
+  rewardTiers: StampRewardOption[];
 }
 
 export const getStampPrograms = async (page = 1, size = 20, isActive?: boolean) => {

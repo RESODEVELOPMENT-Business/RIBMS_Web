@@ -3,8 +3,16 @@ import { persist } from 'zustand/middleware';
 import Cookies from 'js-cookie';
 import { jwtDecode } from 'jwt-decode';
 import { loginAPI, refreshTokenAPI } from '@/services/auth';
+import {
+  getAdminStoreIdFromClaims,
+  getBrandIdFromClaims,
+  getUserRoleFromClaims,
+  mergeUserClaims,
+  type DecodedAuthClaims,
+  type UserRole,
+} from './authClaims';
 
-export type UserRole = 'Administrator' | 'BrandManager' | 'StoreManager';
+export type { UserRole } from './authClaims';
 
 export interface User {
   id: string;
@@ -14,6 +22,13 @@ export interface User {
   brandId?: number | null;
   adminStoreId?: number | null;
 }
+
+type DecodedToken = DecodedAuthClaims & {
+  sub: string;
+  email: string;
+  name: string;
+  exp: number;
+};
 
 interface AuthState {
   user: User | null;
@@ -52,11 +67,10 @@ export const useAuthStore = create<AuthState>()(
           Cookies.set("refreshToken", refreshToken, { expires: 7 }); // Refresh token cookie storage
         }
 
-        const decoded: any = jwtDecode(token);
+        const decoded = jwtDecode<DecodedToken>(token);
 
-        const role = decoded[
-          "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
-        ] as UserRole;
+        const role = getUserRoleFromClaims(decoded);
+        if (!role) throw new Error('Invalid role in authentication token');
 
 
         set({
@@ -65,12 +79,8 @@ export const useAuthStore = create<AuthState>()(
             email: decoded.email,
             fullName: decoded.name,
             role,
-            brandId: decoded.BrandId
-              ? Number(decoded.BrandId)
-              : null,
-            adminStoreId: decoded.AdminStoreId
-              ? Number(decoded.AdminStoreId)
-              : null,
+            brandId: getBrandIdFromClaims(decoded, role),
+            adminStoreId: getAdminStoreIdFromClaims(decoded),
           },
           isAuthenticated: true,
         });
@@ -101,10 +111,9 @@ export const useAuthStore = create<AuthState>()(
             Cookies.set("refreshToken", newRefreshToken, { expires: 7 }); // Refresh token cookie storage
           }
 
-          const decoded: any = jwtDecode(token);
-          const role = decoded[
-            "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
-          ] as UserRole;
+          const decoded = jwtDecode<DecodedToken>(token);
+          const role = getUserRoleFromClaims(decoded);
+          if (!role) return false;
 
           set({
             user: {
@@ -112,12 +121,8 @@ export const useAuthStore = create<AuthState>()(
               email: decoded.email,
               fullName: decoded.name,
               role,
-              brandId: decoded.BrandId
-                ? Number(decoded.BrandId)
-                : null,
-              adminStoreId: decoded.AdminStoreId
-                ? Number(decoded.AdminStoreId)
-                : null,
+              brandId: getBrandIdFromClaims(decoded, role),
+              adminStoreId: getAdminStoreIdFromClaims(decoded),
             },
             isAuthenticated: true,
           });
@@ -133,7 +138,7 @@ export const useAuthStore = create<AuthState>()(
         if (!token) return true;
 
         try {
-          const decoded: any = jwtDecode(token);
+          const decoded = jwtDecode<DecodedToken>(token);
           const currentTime = Date.now() / 1000;
           return decoded.exp < currentTime;
         } catch {
@@ -147,7 +152,7 @@ export const useAuthStore = create<AuthState>()(
         if (!token || !refreshToken) return false;
 
         try {
-          const decoded: any = jwtDecode(token);
+          const decoded = jwtDecode<DecodedToken>(token);
           const currentTime = Date.now() / 1000;
           const timeUntilExpiry = decoded.exp - currentTime;
           
@@ -166,6 +171,14 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage', // name of the item in the storage (must be unique)
       onRehydrateStorage: () => (state) => {
+        const token = Cookies.get('token');
+        if (state?.user && token) {
+          try {
+            state.login(mergeUserClaims(state.user, jwtDecode<DecodedToken>(token)));
+          } catch {
+            // Keep the persisted session; the API client will handle token expiry.
+          }
+        }
         state?.setHydrated();
       },
     }

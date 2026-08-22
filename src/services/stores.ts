@@ -1,5 +1,14 @@
 import { apiClient } from './apiClient';
 
+export interface Store {
+  id: number;
+  name: string;
+  shortName?: string | null;
+  address?: string;
+  brandId?: number;
+  active?: boolean;
+}
+
 export interface StoreData {
   Email?: string;
   Password?: string;

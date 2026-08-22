@@ -52,8 +52,11 @@ export default function StoreProductsReportPage() {
   const handleExport = () => {
     if (!data) return;
     let stt = 0;
-    const parentRows = buildParentRows(data).flatMap((group) =>
-      group.childProducts.map((child) => ({
+    const grandTotal = data.grandTotalRevenue || 0;
+    // Nhóm không có child (SKU standalone, không GeneralProductId) phải xuất
+    // chính group thành 1 dòng, nếu không tổng sheet lệch grandTotalRevenue.
+    const parentRows = buildParentRows(data).flatMap((group) => {
+      const childRows = group.childProducts.map((child) => ({
         STT: ++stt,
         'Sản phẩm cha': group.parentProductName,
         'Sản phẩm': child.productName,
@@ -62,8 +65,26 @@ export default function StoreProductsReportPage() {
         'Số lượng': child.quantity,
         'Doanh thu (VND)': child.revenue,
         'Tỷ trọng (%)': child.revenueShare,
-      })),
-    );
+      }));
+
+      if (group.childProducts.length > 0) return childRows;
+
+      // Standalone: group chính là sản phẩm bán (childProducts rỗng trên backend)
+      return [
+        {
+          STT: ++stt,
+          'Sản phẩm cha': group.parentProductName,
+          'Sản phẩm': group.parentProductName,
+          Mã: group.parentProductCode,
+          Nhóm: group.categoryName,
+          'Số lượng': group.quantity,
+          'Doanh thu (VND)': group.revenue,
+          'Tỷ trọng (%)': grandTotal > 0
+            ? Math.round((group.revenue * 10000) / grandTotal) / 100
+            : 0,
+        },
+      ];
+    });
 
     const productRows = (rows: typeof data.topSellingProducts) =>
       rows.map((p, idx) => ({

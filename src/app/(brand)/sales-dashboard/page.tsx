@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import {
   getSalesDashboard,
@@ -83,12 +84,12 @@ export default function SalesDashboardPage() {
     const storeName =
       selectedStoreIds.length > 0
         ? selectedStoreIds
-            .map((id) => {
-              const s = stores.find((st) => (st.id || st.storeId) === id);
-              return s?.name || s?.storeName;
-            })
-            .filter(Boolean)
-            .join(', ')
+          .map((id) => {
+            const s = stores.find((st) => (st.id || st.storeId) === id);
+            return s?.name || s?.storeName;
+          })
+          .filter(Boolean)
+          .join(', ')
         : undefined;
 
     const summaryRows = [
@@ -165,7 +166,9 @@ export default function SalesDashboardPage() {
             BC#1 — Tổng quan doanh thu, hóa đơn và phương thức thanh toán
           </p>
         </div>
-        <ExportExcelButton onClick={handleExport} disabled={loading || !dashboardData} />
+        <div className="flex items-center gap-3">
+          <ExportExcelButton onClick={handleExport} disabled={loading || !dashboardData} />
+        </div>
       </div>
 
       <DashboardFilters
@@ -265,17 +268,17 @@ export default function SalesDashboardPage() {
                 </div>
 
                 <InvoiceBar label="Tại quán (1)"
-                            count={dashboardData.invoices.atStore}
-                            total={dashboardData.invoices.total}
-                            color="bg-indigo-500" />
+                  count={dashboardData.invoices.atStore}
+                  total={dashboardData.invoices.total}
+                  color="bg-indigo-500" />
                 <InvoiceBar label="Mang đi (2)"
-                            count={dashboardData.invoices.takeAway}
-                            total={dashboardData.invoices.total}
-                            color="bg-purple-500" />
+                  count={dashboardData.invoices.takeAway}
+                  total={dashboardData.invoices.total}
+                  color="bg-purple-500" />
                 <InvoiceBar label="Giao hàng (3)"
-                            count={dashboardData.invoices.delivery}
-                            total={dashboardData.invoices.total}
-                            color="bg-sky-500" />
+                  count={dashboardData.invoices.delivery}
+                  total={dashboardData.invoices.total}
+                  color="bg-sky-500" />
               </div>
             </div>
           </div>
@@ -327,7 +330,7 @@ export default function SalesDashboardPage() {
                     const gradient = gradients[idx % gradients.length];
                     return (
                       <div key={pm.paymentType}
-                           className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60 flex flex-col justify-between hover:shadow-md transition-all duration-300">
+                        className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60 flex flex-col justify-between hover:shadow-md transition-all duration-300">
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <span className="text-sm font-bold text-gray-800 dark:text-white block">
@@ -348,7 +351,7 @@ export default function SalesDashboardPage() {
                         </div>
                         <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
                           <div className={`bg-gradient-to-r ${gradient} h-full rounded-full transition-all duration-500`}
-                               style={{ width: `${percent}%` }} />
+                            style={{ width: `${percent}%` }} />
                         </div>
                       </div>
                     );
@@ -434,7 +437,7 @@ function InvoiceBar({ label, count, total, color }: { label: string; count: numb
       </div>
       <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
         <div className={`${color} h-full rounded-full transition-all duration-500`}
-             style={{ width: `${pct}%` }} />
+          style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
