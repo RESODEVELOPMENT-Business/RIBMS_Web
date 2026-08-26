@@ -210,7 +210,7 @@ export default function CostCategoriesPage() {
 
         return (
           <div className="flex justify-end gap-3">
-            <Link href={`/costcategories/${item.catId}`} className="text-gray-600 hover:text-gray-800 font-medium">
+            <Link href={`/cost-categories/${item.catId}`} className="text-gray-600 hover:text-gray-800 font-medium">
               Chi tiết
             </Link>
             <button onClick={() => startEdit(item)} className="text-brand-500 hover:text-brand-600 font-medium">

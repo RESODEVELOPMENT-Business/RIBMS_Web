@@ -11,6 +11,12 @@ export default function CreateStorePage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
+    const storeCode = (formData.get("StoreCode") as string)?.trim();
+    if (!storeCode) {
+      toast.error('Vui lòng nhập Mã cửa hàng (Store Code)!');
+      return;
+    }
+
     const payload: StoreData = {
       Email: formData.get("Email") as string,
       Password: formData.get("Password") as string,
@@ -53,7 +59,7 @@ export default function CreateStorePage() {
       // Configuration
       DefaultAdminPassword: formData.get("DefaultAdminPassword") as string,
       LogoUrl: formData.get("LogoUrl") as string,
-      StoreCode: formData.get("StoreCode") as string,
+      StoreCode: storeCode,
       PosId: formData.get("PosId") ? Number(formData.get("PosId")) : null,
       StoreConfig: formData.get("StoreConfig") as string,
       DefaultDashBoard: formData.get("DefaultDashBoard") as string,
@@ -121,8 +127,8 @@ export default function CreateStorePage() {
             <input type="text" name="ShortName" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Store Code</label>
-            <input type="text" name="StoreCode" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Store Code (*)</label>
+            <input required type="text" name="StoreCode" placeholder="VD: PS-PQ91, PS-FPTU" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-300">Phone</label>

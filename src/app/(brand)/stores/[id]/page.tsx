@@ -175,6 +175,10 @@ export default function StoreDetailPage() {
       toast.error('Địa chỉ không được để trống');
       return;
     }
+    if (!editStoreCode?.trim()) {
+      toast.error('Mã cửa hàng (Store Code) không được để trống');
+      return;
+    }
     setInfoSaving(true);
 
     let openTimeVal: string | null = null;
@@ -195,7 +199,7 @@ export default function StoreDetailPage() {
         phone: editPhone || null,
         email: editEmail || null,
         fax: editFax || null,
-        storeCode: editStoreCode || null,
+        storeCode: editStoreCode.trim(),
         lat: editLat || null,
         lon: editLon || null,
         province: editProvince || null,
@@ -499,9 +503,13 @@ export default function StoreDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Mã cửa hàng (Store Code)</label>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                    Mã cửa hàng (Store Code) <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
+                    required
+                    placeholder="VD: PS-PQ91, PS-FPTU"
                     value={editStoreCode}
                     onChange={(e) => setEditStoreCode(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all"
