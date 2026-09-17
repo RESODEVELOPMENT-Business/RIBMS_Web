@@ -464,20 +464,20 @@ export default function PromotionDetailPage() {
                       <input type="text" placeholder="🔍 Tìm sản phẩm..." className={`${inputCls} mb-2`}
                         value={newDetailData._buySearch || ''} onChange={(e) => setNewEd('_buySearch', e.target.value)} />
                       <div className="max-h-[180px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
-                        {products.filter((p: any) => { const s = (newDetailData._buySearch||'').toLowerCase(); return !s || (p.productName||'').toLowerCase().includes(s) || String(p.id||p.productId).includes(s); }).map((prod: any) => {
-                          const pid = String(prod.id||prod.productId);
+                        {products.filter((p: any) => { const s = (newDetailData._buySearch || '').toLowerCase(); return !s || (p.productName || '').toLowerCase().includes(s) || String(p.id || p.productId).includes(s); }).map((prod: any) => {
+                          const pid = String(prod.id || prod.productId);
                           const sids = newDetailData.buyProductCode?.toString().slice(2).split(',').filter(Boolean) || [];
                           const chk = sids.includes(pid);
                           return (<label key={pid} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm ${chk ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-                            <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x:string)=>x!==pid) : [...sids,pid]; setNewEd('buyProductCode', n.length>0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-brand-500" />
-                            <span className={chk?'font-semibold text-brand-700 dark:text-brand-300':'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
+                            <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x: string) => x !== pid) : [...sids, pid]; setNewEd('buyProductCode', n.length > 0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-brand-500" />
+                            <span className={chk ? 'font-semibold text-brand-700 dark:text-brand-300' : 'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
                             <span className="text-xs text-gray-400 ml-auto">ID: {pid}</span>
                           </label>);
                         })}
                       </div>
                     </div>
                   ) : (
-                    <select className={inputCls} value={newDetailData.buyProductCode||''} onChange={(e) => setNewEd('buyProductCode', e.target.value||null)}>
+                    <select className={inputCls} value={newDetailData.buyProductCode || ''} onChange={(e) => setNewEd('buyProductCode', e.target.value || null)}>
                       <option value="">-- Không áp dụng theo category --</option>
                       {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.categoryName} (ID: {cat.id})</option>))}
                     </select>
@@ -505,20 +505,20 @@ export default function PromotionDetailPage() {
                         <input type="text" placeholder="🔍 Tìm sản phẩm tặng..." className={`${inputCls} mb-2`}
                           value={newDetailData._giftSearch || ''} onChange={(e) => setNewEd('_giftSearch', e.target.value)} />
                         <div className="max-h-[180px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
-                          {products.filter((p: any) => { const s = (newDetailData._giftSearch||'').toLowerCase(); return !s || (p.productName||'').toLowerCase().includes(s) || String(p.id||p.productId).includes(s); }).map((prod: any) => {
-                            const pid = String(prod.id||prod.productId);
+                          {products.filter((p: any) => { const s = (newDetailData._giftSearch || '').toLowerCase(); return !s || (p.productName || '').toLowerCase().includes(s) || String(p.id || p.productId).includes(s); }).map((prod: any) => {
+                            const pid = String(prod.id || prod.productId);
                             const sids = newDetailData.giftProductCode?.toString().slice(2).split(',').filter(Boolean) || [];
                             const chk = sids.includes(pid);
                             return (<label key={pid} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm ${chk ? 'bg-purple-50 dark:bg-purple-900/20 border border-purple-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-                              <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x:string)=>x!==pid) : [...sids,pid]; setNewEd('giftProductCode', n.length>0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-purple-500" />
-                              <span className={chk?'font-semibold text-purple-700 dark:text-purple-300':'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
+                              <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x: string) => x !== pid) : [...sids, pid]; setNewEd('giftProductCode', n.length > 0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-purple-500" />
+                              <span className={chk ? 'font-semibold text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
                               <span className="text-xs text-gray-400 ml-auto">ID: {pid}</span>
                             </label>);
                           })}
                         </div>
                       </div>
                     ) : (
-                      <select className={inputCls} value={newDetailData.giftProductCode||''} onChange={(e) => setNewEd('giftProductCode', e.target.value||null)}>
+                      <select className={inputCls} value={newDetailData.giftProductCode || ''} onChange={(e) => setNewEd('giftProductCode', e.target.value || null)}>
                         <option value="">-- Chọn category tặng --</option>
                         {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.categoryName} (ID: {cat.id})</option>))}
                       </select>
@@ -531,33 +531,33 @@ export default function PromotionDetailPage() {
                   {promo.giftType !== 1 && (<>
                     <div>
                       <label className={labelCls}>Giảm giá (%)</label>
-                      <input type="number" step="0.01" min="0" max="100" className={inputCls} value={newDetailData.discountRate??''} onChange={(e) => setNewEd('discountRate', e.target.value ? Number(e.target.value) : null)} />
+                      <input type="number" step="0.01" min="0" max="100" className={inputCls} value={newDetailData.discountRate ?? ''} onChange={(e) => setNewEd('discountRate', e.target.value ? Number(e.target.value) : null)} />
                     </div>
                     <div>
                       <label className={labelCls}>Giảm giá (tiền)</label>
-                      <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.discountAmount??''} onChange={(e) => setNewEd('discountAmount', e.target.value ? Number(e.target.value) : null)} />
+                      <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.discountAmount ?? ''} onChange={(e) => setNewEd('discountAmount', e.target.value ? Number(e.target.value) : null)} />
                     </div>
                   </>)}
                   <div>
                     <label className={labelCls}>Giá trị đơn hàng tối thiểu</label>
-                    <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.minOrderAmount??''} onChange={(e) => setNewEd('minOrderAmount', e.target.value ? Number(e.target.value) : null)} />
+                    <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.minOrderAmount ?? ''} onChange={(e) => setNewEd('minOrderAmount', e.target.value ? Number(e.target.value) : null)} />
                   </div>
                   <div>
                     <label className={labelCls}>Giá trị đơn hàng tối đa</label>
-                    <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.maxOrderAmount??''} onChange={(e) => setNewEd('maxOrderAmount', e.target.value ? Number(e.target.value) : null)} />
+                    <input type="number" step="1000" min="0" className={inputCls} value={newDetailData.maxOrderAmount ?? ''} onChange={(e) => setNewEd('maxOrderAmount', e.target.value ? Number(e.target.value) : null)} />
                   </div>
                   <div>
                     <label className={labelCls}>Số lượng mua tối thiểu</label>
-                    <input type="number" min="1" className={inputCls} value={newDetailData.minBuyQuantity??''} onChange={(e) => setNewEd('minBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
+                    <input type="number" min="1" className={inputCls} value={newDetailData.minBuyQuantity ?? ''} onChange={(e) => setNewEd('minBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
                   </div>
                   <div>
                     <label className={labelCls}>Số lượng được giảm tối đa</label>
-                    <input type="number" min="1" className={inputCls} value={newDetailData.maxBuyQuantity??''} onChange={(e) => setNewEd('maxBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
+                    <input type="number" min="1" className={inputCls} value={newDetailData.maxBuyQuantity ?? ''} onChange={(e) => setNewEd('maxBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
                   </div>
                   {promo.giftType === 1 && (
                     <div>
                       <label className={labelCls}>Số lượng tặng</label>
-                      <input type="number" min="1" className={inputCls} value={newDetailData.giftQuantity??''} onChange={(e) => setNewEd('giftQuantity', e.target.value ? Number(e.target.value) : null)} />
+                      <input type="number" min="1" className={inputCls} value={newDetailData.giftQuantity ?? ''} onChange={(e) => setNewEd('giftQuantity', e.target.value ? Number(e.target.value) : null)} />
                     </div>
                   )}
                   <div>
@@ -616,20 +616,20 @@ export default function PromotionDetailPage() {
                             <input type="text" placeholder="🔍 Tìm sản phẩm..." className={`${inputCls} mb-2`}
                               value={ed._buySearch || ''} onChange={(e) => setEd('_buySearch', e.target.value)} />
                             <div className="max-h-[180px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
-                              {products.filter((p: any) => { const s = (ed._buySearch||'').toLowerCase(); return !s || (p.productName||'').toLowerCase().includes(s) || String(p.id||p.productId).includes(s); }).map((prod: any) => {
-                                const pid = String(prod.id||prod.productId);
+                              {products.filter((p: any) => { const s = (ed._buySearch || '').toLowerCase(); return !s || (p.productName || '').toLowerCase().includes(s) || String(p.id || p.productId).includes(s); }).map((prod: any) => {
+                                const pid = String(prod.id || prod.productId);
                                 const sids = ed.buyProductCode?.toString().slice(2).split(',').filter(Boolean) || [];
                                 const chk = sids.includes(pid);
                                 return (<label key={pid} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm ${chk ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-                                  <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x:string)=>x!==pid) : [...sids,pid]; setEd('buyProductCode', n.length>0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-brand-500" />
-                                  <span className={chk?'font-semibold text-brand-700 dark:text-brand-300':'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
+                                  <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x: string) => x !== pid) : [...sids, pid]; setEd('buyProductCode', n.length > 0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-brand-500" />
+                                  <span className={chk ? 'font-semibold text-brand-700 dark:text-brand-300' : 'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
                                   <span className="text-xs text-gray-400 ml-auto">ID: {pid}</span>
                                 </label>);
                               })}
                             </div>
                           </div>
                         ) : (
-                          <select className={inputCls} value={ed.buyProductCode||''} onChange={(e) => setEd('buyProductCode', e.target.value||null)}>
+                          <select className={inputCls} value={ed.buyProductCode || ''} onChange={(e) => setEd('buyProductCode', e.target.value || null)}>
                             <option value="">-- Không áp dụng theo category --</option>
                             {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.categoryName} (ID: {cat.id})</option>))}
                           </select>
@@ -657,20 +657,20 @@ export default function PromotionDetailPage() {
                               <input type="text" placeholder="🔍 Tìm sản phẩm tặng..." className={`${inputCls} mb-2`}
                                 value={ed._giftSearch || ''} onChange={(e) => setEd('_giftSearch', e.target.value)} />
                               <div className="max-h-[180px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
-                                {products.filter((p: any) => { const s = (ed._giftSearch||'').toLowerCase(); return !s || (p.productName||'').toLowerCase().includes(s) || String(p.id||p.productId).includes(s); }).map((prod: any) => {
-                                  const pid = String(prod.id||prod.productId);
+                                {products.filter((p: any) => { const s = (ed._giftSearch || '').toLowerCase(); return !s || (p.productName || '').toLowerCase().includes(s) || String(p.id || p.productId).includes(s); }).map((prod: any) => {
+                                  const pid = String(prod.id || prod.productId);
                                   const sids = ed.giftProductCode?.toString().slice(2).split(',').filter(Boolean) || [];
                                   const chk = sids.includes(pid);
                                   return (<label key={pid} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm ${chk ? 'bg-purple-50 dark:bg-purple-900/20 border border-purple-300' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-                                    <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x:string)=>x!==pid) : [...sids,pid]; setEd('giftProductCode', n.length>0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-purple-500" />
-                                    <span className={chk?'font-semibold text-purple-700 dark:text-purple-300':'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
+                                    <input type="checkbox" checked={chk} onChange={() => { const n = chk ? sids.filter((x: string) => x !== pid) : [...sids, pid]; setEd('giftProductCode', n.length > 0 ? `P:${n.join(',')}` : 'P:'); }} className="w-4 h-4 rounded text-purple-500" />
+                                    <span className={chk ? 'font-semibold text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}>{prod.productName}</span>
                                     <span className="text-xs text-gray-400 ml-auto">ID: {pid}</span>
                                   </label>);
                                 })}
                               </div>
                             </div>
                           ) : (
-                            <select className={inputCls} value={ed.giftProductCode||''} onChange={(e) => setEd('giftProductCode', e.target.value||null)}>
+                            <select className={inputCls} value={ed.giftProductCode || ''} onChange={(e) => setEd('giftProductCode', e.target.value || null)}>
                               <option value="">-- Chọn category tặng --</option>
                               {categories.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.categoryName} (ID: {cat.id})</option>))}
                             </select>
@@ -683,33 +683,33 @@ export default function PromotionDetailPage() {
                         {!isGiftType && (<>
                           <div>
                             <label className={labelCls}>Giảm giá (%)</label>
-                            <input type="number" step="0.01" min="0" max="100" className={inputCls} value={ed.discountRate??''} onChange={(e) => setEd('discountRate', e.target.value ? Number(e.target.value) : null)} />
+                            <input type="number" step="0.01" min="0" max="100" className={inputCls} value={ed.discountRate ?? ''} onChange={(e) => setEd('discountRate', e.target.value ? Number(e.target.value) : null)} />
                           </div>
                           <div>
                             <label className={labelCls}>Giảm giá (tiền)</label>
-                            <input type="number" step="1000" min="0" className={inputCls} value={ed.discountAmount??''} onChange={(e) => setEd('discountAmount', e.target.value ? Number(e.target.value) : null)} />
+                            <input type="number" step="1000" min="0" className={inputCls} value={ed.discountAmount ?? ''} onChange={(e) => setEd('discountAmount', e.target.value ? Number(e.target.value) : null)} />
                           </div>
                         </>)}
                         <div>
                           <label className={labelCls}>Giá trị đơn hàng tối thiểu</label>
-                          <input type="number" step="1000" min="0" className={inputCls} value={ed.minOrderAmount??''} onChange={(e) => setEd('minOrderAmount', e.target.value ? Number(e.target.value) : null)} />
+                          <input type="number" step="1000" min="0" className={inputCls} value={ed.minOrderAmount ?? ''} onChange={(e) => setEd('minOrderAmount', e.target.value ? Number(e.target.value) : null)} />
                         </div>
                         <div>
                           <label className={labelCls}>Giá trị đơn hàng tối đa</label>
-                          <input type="number" step="1000" min="0" className={inputCls} value={ed.maxOrderAmount??''} onChange={(e) => setEd('maxOrderAmount', e.target.value ? Number(e.target.value) : null)} />
+                          <input type="number" step="1000" min="0" className={inputCls} value={ed.maxOrderAmount ?? ''} onChange={(e) => setEd('maxOrderAmount', e.target.value ? Number(e.target.value) : null)} />
                         </div>
                         <div>
                           <label className={labelCls}>Số lượng mua tối thiểu</label>
-                          <input type="number" min="1" className={inputCls} value={ed.minBuyQuantity??''} onChange={(e) => setEd('minBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
+                          <input type="number" min="1" className={inputCls} value={ed.minBuyQuantity ?? ''} onChange={(e) => setEd('minBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
                         </div>
                         <div>
                           <label className={labelCls}>Số lượng được giảm tối đa</label>
-                          <input type="number" min="1" className={inputCls} value={ed.maxBuyQuantity??''} onChange={(e) => setEd('maxBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
+                          <input type="number" min="1" className={inputCls} value={ed.maxBuyQuantity ?? ''} onChange={(e) => setEd('maxBuyQuantity', e.target.value ? Number(e.target.value) : null)} />
                         </div>
                         {isGiftType && (
                           <div>
                             <label className={labelCls}>Số lượng tặng</label>
-                            <input type="number" min="1" className={inputCls} value={ed.giftQuantity??''} onChange={(e) => setEd('giftQuantity', e.target.value ? Number(e.target.value) : null)} />
+                            <input type="number" min="1" className={inputCls} value={ed.giftQuantity ?? ''} onChange={(e) => setEd('giftQuantity', e.target.value ? Number(e.target.value) : null)} />
                           </div>
                         )}
                       </div>
@@ -780,10 +780,13 @@ export default function PromotionDetailPage() {
           {/* Add Store Panel */}
           {addingStore && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5 border-2 border-brand-500/30 space-y-4">
-              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">Thêm cửa hàng vào promotion</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">Thêm cửa hàng vào promotion</h3>
+                <span className="text-xs text-gray-400">{stores.length} cửa hàng khả dụng</span>
+              </div>
               <input
                 type="text"
-                placeholder="🔍 Tìm kiếm cửa hàng..."
+                placeholder="🔍 Tìm theo tên, mã cửa hàng, địa chỉ..."
                 className={inputCls}
                 value={storeSearch}
                 onChange={(e) => setStoreSearch(e.target.value)}
@@ -795,29 +798,46 @@ export default function PromotionDetailPage() {
                   if (assignedIds.has(id)) return false;
                   const search = storeSearch.toLowerCase();
                   if (!search) return true;
-                  return (s.storeName || '').toLowerCase().includes(search) || String(id).includes(search);
+                  return (
+                    (s.name || '').toLowerCase().includes(search) ||
+                    (s.storeCode || '').toLowerCase().includes(search) ||
+                    (s.address || '').toLowerCase().includes(search) ||
+                    String(id).includes(search)
+                  );
                 });
                 return availableStores.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-4">
                     {storeSearch ? 'Không tìm thấy cửa hàng phù hợp.' : 'Tất cả cửa hàng đã được gán vào promotion này.'}
                   </p>
                 ) : (
-                  <div className="max-h-[280px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                  <div className="max-h-[300px] overflow-y-auto border rounded-lg dark:border-gray-600 divide-y dark:divide-gray-700">
                     {availableStores.map((s: any) => {
                       const sid = s.id || s.storeId;
                       const checked = selectedNewStoreIds.includes(sid);
                       return (
-                        <label key={sid} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm transition-all ${checked ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300 dark:border-brand-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700/40'}`}>
+                        <label key={sid} className={`flex items-start gap-3 px-3 py-2.5 cursor-pointer text-sm transition-all ${checked ? 'bg-brand-50 dark:bg-brand-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/40'}`}>
                           <input
                             type="checkbox"
                             checked={checked}
                             onChange={() => setSelectedNewStoreIds((prev) => checked ? prev.filter((id) => id !== sid) : [...prev, sid])}
-                            className="w-4 h-4 rounded text-brand-500"
+                            className="w-4 h-4 rounded text-brand-500 mt-0.5 shrink-0"
                           />
-                          <span className={checked ? 'font-semibold text-brand-700 dark:text-brand-300' : 'text-gray-700 dark:text-gray-300'}>
-                            {s.storeName || `Store ${sid}`}
-                          </span>
-                          <span className="text-xs text-gray-400 ml-auto">ID: {sid}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium truncate ${checked ? 'text-brand-700 dark:text-brand-300' : 'text-gray-800 dark:text-gray-200'}`}>
+                              {s.name || `Store ${sid}`}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {s.storeCode?.trim() && (
+                                <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">
+                                  {s.storeCode.trim()}
+                                </span>
+                              )}
+                              {s.address && (
+                                <span className="text-xs text-gray-400 truncate">{s.address}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-400 shrink-0">#{sid}</span>
                         </label>
                       );
                     })}
