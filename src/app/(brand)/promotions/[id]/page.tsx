@@ -15,9 +15,12 @@ import {
   UpdatePromotionData,
   createPromotionDetail,
   CreatePromotionDetailData,
+  addStoreMapping,
 } from '@/services/promotions';
 import { getProductCategories } from '@/services/productCategories';
 import { getProducts } from '@/services/products';
+import { getStores } from '@/services/stores';
+import { useAuthStore } from '@/store/authStore';
 
 type TabKey = 'overview' | 'details' | 'stores' | 'vouchers';
 
@@ -36,6 +39,13 @@ export default function PromotionDetailPage() {
   const [addingDetail, setAddingDetail] = useState(false);
   const [newDetailData, setNewDetailData] = useState<any>({});
 
+  // Store state
+  const [stores, setStores] = useState<any[]>([]);
+  const [addingStore, setAddingStore] = useState(false);
+  const [selectedNewStoreIds, setSelectedNewStoreIds] = useState<number[]>([]);
+  const [addingStoreLoading, setAddingStoreLoading] = useState(false);
+  const [storeSearch, setStoreSearch] = useState('');
+
   // Editing state
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<UpdatePromotionData>({});
@@ -52,6 +62,7 @@ export default function PromotionDetailPage() {
       fetchPromotion();
       fetchCategories();
       fetchProducts();
+      fetchStores();
     }
   }, [promotionId]);
 
@@ -113,6 +124,18 @@ export default function PromotionDetailPage() {
     }
   };
 
+  const fetchStores = async () => {
+    try {
+      const brandId = useAuthStore.getState().user?.brandId;
+      const res = await getStores(1, 200, brandId || undefined);
+      if (res && res.data) {
+        setStores(res.data.items || res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load stores', err);
+    }
+  };
+
   const fetchVouchers = async () => {
     setVouchersLoading(true);
     try {
@@ -148,6 +171,23 @@ export default function PromotionDetailPage() {
       fetchPromotion();
     } catch (err: any) {
       toast.error(`Error: ${err.message}`);
+    }
+  };
+
+  const handleAddStores = async () => {
+    if (selectedNewStoreIds.length === 0) return;
+    setAddingStoreLoading(true);
+    try {
+      await Promise.all(selectedNewStoreIds.map((storeId) => addStoreMapping(promotionId, storeId)));
+      toast.success(`Đã thêm ${selectedNewStoreIds.length} cửa hàng vào promotion!`);
+      setAddingStore(false);
+      setSelectedNewStoreIds([]);
+      setStoreSearch('');
+      fetchPromotion();
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setAddingStoreLoading(false);
     }
   };
 
@@ -721,44 +761,133 @@ export default function PromotionDetailPage() {
 
       {/* ─── Tab: Store Mappings ─── */}
       {activeTab === 'stores' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
-          {promo.storeMappings && promo.storeMappings.length > 0 ? (
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs">
-                <tr>
-                  <th className="px-5 py-3">Store ID</th>
-                  <th className="px-5 py-3">Store Name</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y dark:divide-gray-700">
-                {promo.storeMappings.map((m: any) => (
-                  <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                    <td className="px-5 py-3 font-mono text-gray-600 dark:text-gray-300">{m.storeId}</td>
-                    <td className="px-5 py-3 text-gray-800 dark:text-white font-medium">{m.storeName || '—'}</td>
-                    <td className="px-5 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${m.active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
-                        {m.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => handleToggleStoreMapping(m.id, m.active)}
-                        className={`text-xs font-medium ${m.active ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'} transition-colors`}
-                      >
-                        {m.active ? 'Deactivate' : 'Activate'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-6 text-center text-gray-400">No stores assigned.</div>
+        <div className="space-y-4">
+          {/* Header + Add Store button */}
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {promo.storeMappings?.length || 0} cửa hàng đang được gán
+            </p>
+            {!addingStore && (
+              <button
+                onClick={() => { setAddingStore(true); setSelectedNewStoreIds([]); setStoreSearch(''); }}
+                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium text-sm transition-colors shadow-sm"
+              >
+                + Add Store
+              </button>
+            )}
+          </div>
+
+          {/* Add Store Panel */}
+          {addingStore && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5 border-2 border-brand-500/30 space-y-4">
+              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">Thêm cửa hàng vào promotion</h3>
+              <input
+                type="text"
+                placeholder="🔍 Tìm kiếm cửa hàng..."
+                className={inputCls}
+                value={storeSearch}
+                onChange={(e) => setStoreSearch(e.target.value)}
+              />
+              {(() => {
+                const assignedIds = new Set((promo.storeMappings || []).map((m: any) => m.storeId));
+                const availableStores = stores.filter((s: any) => {
+                  const id = s.id || s.storeId;
+                  if (assignedIds.has(id)) return false;
+                  const search = storeSearch.toLowerCase();
+                  if (!search) return true;
+                  return (s.storeName || '').toLowerCase().includes(search) || String(id).includes(search);
+                });
+                return availableStores.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">
+                    {storeSearch ? 'Không tìm thấy cửa hàng phù hợp.' : 'Tất cả cửa hàng đã được gán vào promotion này.'}
+                  </p>
+                ) : (
+                  <div className="max-h-[280px] overflow-y-auto border rounded-lg dark:border-gray-600 p-2 space-y-1">
+                    {availableStores.map((s: any) => {
+                      const sid = s.id || s.storeId;
+                      const checked = selectedNewStoreIds.includes(sid);
+                      return (
+                        <label key={sid} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm transition-all ${checked ? 'bg-brand-50 dark:bg-brand-900/20 border border-brand-300 dark:border-brand-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700/40'}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setSelectedNewStoreIds((prev) => checked ? prev.filter((id) => id !== sid) : [...prev, sid])}
+                            className="w-4 h-4 rounded text-brand-500"
+                          />
+                          <span className={checked ? 'font-semibold text-brand-700 dark:text-brand-300' : 'text-gray-700 dark:text-gray-300'}>
+                            {s.storeName || `Store ${sid}`}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-auto">ID: {sid}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              {selectedNewStoreIds.length > 0 && (
+                <p className="text-xs text-brand-600 dark:text-brand-400 font-medium">
+                  ✓ Đã chọn {selectedNewStoreIds.length} cửa hàng
+                </p>
+              )}
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  onClick={() => { setAddingStore(false); setSelectedNewStoreIds([]); setStoreSearch(''); }}
+                  className="px-4 py-2 text-sm border rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddStores}
+                  disabled={selectedNewStoreIds.length === 0 || addingStoreLoading}
+                  className="px-5 py-2 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors font-medium disabled:opacity-50"
+                >
+                  {addingStoreLoading ? 'Đang thêm…' : `Thêm ${selectedNewStoreIds.length > 0 ? `(${selectedNewStoreIds.length})` : ''}`}
+                </button>
+              </div>
+            </div>
           )}
+
+          {/* Existing store mappings table */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+            {promo.storeMappings && promo.storeMappings.length > 0 ? (
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs">
+                  <tr>
+                    <th className="px-5 py-3">Store ID</th>
+                    <th className="px-5 py-3">Store Name</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y dark:divide-gray-700">
+                  {promo.storeMappings.map((m: any) => (
+                    <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-5 py-3 font-mono text-gray-600 dark:text-gray-300">{m.storeId}</td>
+                      <td className="px-5 py-3 text-gray-800 dark:text-white font-medium">{m.storeName || '—'}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${m.active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
+                          {m.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => handleToggleStoreMapping(m.id, m.active)}
+                          className={`text-xs font-medium ${m.active ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'} transition-colors`}
+                        >
+                          {m.active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-6 text-center text-gray-400">No stores assigned.</div>
+            )}
+          </div>
         </div>
       )}
+
 
       {/* ─── Tab: Vouchers ─── */}
       {activeTab === 'vouchers' && (
