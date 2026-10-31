@@ -87,6 +87,7 @@ const AppSidebar: React.FC = () => {
               { name: "So sánh kỳ", path: "/sales-dashboard/comparison" },
               { name: "Báo cáo đơn hàng Block 4h", path: "/sales-dashboard/orders-report" },
               { name: "Báo cáo sản phẩm", path: "/sales-dashboard/products-report" },
+              { name: "Tiêu hao vật tư & BOM", path: "/sales-dashboard/material-consumption-report" },
               { name: "Báo cáo lợi nhuận", path: "/sales-dashboard/profit-report" },
               { name: "Báo cáo tình hình lợi nhuận", path: "/sales-dashboard/profit-forecast" },
               { name: "Vận hành cửa hàng", path: "/sales-dashboard/operations-report" },
@@ -104,6 +105,7 @@ const AppSidebar: React.FC = () => {
             name: "Danh mục & Tiếp thị",
             subItems: [
               { name: "Sản phẩm", path: "/products" },
+              { name: "Vật tư (HangHoa)", path: "/product-items" },
               { name: "Cấu hình giá sản phẩm", path: "/product-detail-mappings" },
               { name: "Danh mục", path: "/categories" },
               { name: "Khuyến mãi", path: "/promotions" },
