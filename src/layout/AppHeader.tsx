@@ -7,14 +7,22 @@ import Link from "next/link";
 import React from "react";
 
 const AppHeader: React.FC = () => {
-  const { isMobileOpen, toggleSidebar } = useSidebar();
+  const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
 
   const handleToggle = () => {
-    toggleSidebar();
+    if (window.innerWidth >= 1024) {
+      toggleSidebar();
+    } else {
+      toggleMobileSidebar();
+    }
   };
 
   return (
-    <header className="sticky top-0 flex w-full bg-white border-gray-200 z-30 dark:border-gray-800 dark:bg-gray-900 lg:border-b">
+    <header
+      className={`sticky top-0 flex w-full bg-white border-gray-200 dark:border-gray-800 dark:bg-gray-900 lg:border-b ${
+        isMobileOpen ? "z-50" : "z-30"
+      }`}
+    >
       <div className="flex items-center justify-between grow px-4 py-3 lg:px-6 lg:py-3.5">
         <div className="flex items-center gap-3">
           <button
