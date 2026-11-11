@@ -992,7 +992,7 @@ export default function LoyaltyTiersPage() {
                   id="earnMultiplier"
                   type="number"
                   min="0.01"
-                  step="0.1"
+                  step="any"
                   value={form.earnMultiplier}
                   onChange={(event) =>
                     setForm((current) => ({
