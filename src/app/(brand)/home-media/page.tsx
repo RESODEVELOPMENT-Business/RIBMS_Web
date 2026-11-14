@@ -110,6 +110,7 @@ const actionTypeLabels: Record<string, string> = {
   Product: 'Mở sản phẩm',
   SpecialOffer: 'Mở ưu đãi Mobile',
   StampProgram: 'Mở chương trình tích tem',
+  Article: 'Bài viết',
   ExternalHttps: 'Mở liên kết HTTPS',
 };
 
@@ -304,12 +305,22 @@ export default function HomeMediaPage() {
         ...opt,
         label: internalRouteVietnameseLabels[opt.key] ?? opt.label,
       }));
+      const articleOpts = (
+        actionData?.articleOptions ??
+        actionData?.articles ??
+        []
+      ).map((opt) => ({
+        ...opt,
+        type: 'Article',
+        key: '',
+      }));
       setOptions([
         ...(actionData?.none ?? []),
         ...localizedRoutes,
         ...(actionData?.products ?? []),
         ...(actionData?.specialOffers ?? []),
         ...(actionData?.stampPrograms ?? []),
+        ...articleOpts,
       ]);
     } catch (err) {
       setError(
@@ -603,10 +614,14 @@ export default function HomeMediaPage() {
           (item.actionTargetKey || item.actionTargetId),
     );
 
-  const actionLabel = (item: ItemState) =>
-    actionTarget(item)?.label ??
-    actionTypeLabels[item.actionType] ??
-    item.actionType;
+  const actionLabel = (item: ItemState) => {
+    const matched = actionTarget(item);
+    if (matched) return matched.label;
+    if (item.actionType === 'Article' && item.actionTargetId) {
+      return `Bài viết #${item.actionTargetId} (Đã gỡ hoặc chưa xuất bản)`;
+    }
+    return actionTypeLabels[item.actionType] ?? item.actionType;
+  };
 
   const getFriendlyCardLabel = (item: ItemState, indexInGroup: number) => {
     if (fixedSlotLabels[item.contentKey]) {
@@ -732,11 +747,17 @@ export default function HomeMediaPage() {
             imageUrl: receipt?.previewImageUrl || item.imageUrl || storageKey,
             storageObjectKey: storageKey,
             actionType: item.actionType || 'None',
-            actionTargetKey: item.actionTargetKey || null,
+            actionTargetKey:
+              item.actionType === 'Article'
+                ? null
+                : item.actionTargetKey || null,
             actionTargetId: item.actionTargetId
               ? Number(item.actionTargetId)
               : null,
-            actionExternalUrl: item.actionExternalUrl || null,
+            actionExternalUrl:
+              item.actionType === 'Article'
+                ? null
+                : item.actionExternalUrl || null,
             isActive: true,
           };
         }),
@@ -1050,7 +1071,10 @@ export default function HomeMediaPage() {
                                 Đích đến cụ thể (cùng thương hiệu)
                                 <select
                                   value={
-                                    item.actionTargetKey || item.actionTargetId
+                                    item.actionType === 'Article'
+                                      ? item.actionTargetId
+                                      : item.actionTargetKey ||
+                                        item.actionTargetId
                                   }
                                   disabled={busy}
                                   onChange={(event) => {
@@ -1060,18 +1084,33 @@ export default function HomeMediaPage() {
                                         event.target.value,
                                     );
                                     updateItemByLocalId(item.localId, {
-                                      actionTargetKey: selected?.key ?? '',
+                                      actionTargetKey:
+                                        item.actionType === 'Article'
+                                          ? ''
+                                          : selected?.key ?? '',
                                       actionTargetId:
                                         selected?.id?.toString() ?? '',
+                                      actionExternalUrl: '',
                                     });
                                   }}
                                   className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-xs dark:border-gray-700 dark:bg-gray-800"
                                 >
                                   <option value="">
                                     {choices.length
-                                      ? 'Chọn đích đến'
+                                      ? item.actionType === 'Article'
+                                        ? 'Chọn bài viết đã xuất bản'
+                                        : 'Chọn đích đến'
+                                      : item.actionType === 'Article'
+                                      ? 'Chưa có bài viết đã xuất bản'
                                       : 'Chưa có dữ liệu'}
                                   </option>
+                                  {item.actionType === 'Article' &&
+                                    item.actionTargetId &&
+                                    !actionTarget(item) && (
+                                      <option value={item.actionTargetId}>
+                                        {`Bài viết #${item.actionTargetId} (Đã gỡ hoặc chưa xuất bản — chọn bài khác)`}
+                                      </option>
+                                    )}
                                   {choices.map((option) => (
                                     <option
                                       key={`${option.key}-${option.id}`}
@@ -1081,6 +1120,13 @@ export default function HomeMediaPage() {
                                     </option>
                                   ))}
                                 </select>
+                                {item.actionType === 'Article' &&
+                                  item.actionTargetId &&
+                                  !actionTarget(item) && (
+                                    <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                      Bài viết #{item.actionTargetId} đã gỡ hoặc chưa xuất bản. Vui lòng chọn bài viết đã xuất bản hoặc xuất bản lại bài viết trước khi lưu.
+                                    </p>
+                                  )}
                               </label>
                             )}
 
@@ -1163,8 +1209,23 @@ export default function HomeMediaPage() {
         {/* Cross-editor overview shortcuts */}
         <section
           aria-label="Liên kết nhanh quản lý hình ảnh liên quan"
-          className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
         >
+          <Link
+            href="/articles"
+            className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs transition hover:border-brand-400 hover:shadow-theme-xs dark:border-gray-800 dark:bg-gray-900"
+          >
+            <div>
+              <span className="font-bold text-gray-900 dark:text-white block">
+                Bài viết thương hiệu
+              </span>
+              <span className="text-gray-500">
+                Soạn câu chuyện thương hiệu &amp; bài ưu đãi gắn lên Trang chủ
+              </span>
+            </div>
+            <span className="font-semibold text-brand-600">Mở →</span>
+          </Link>
+
           <Link
             href="/loyalty-tiers"
             className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs transition hover:border-brand-400 hover:shadow-theme-xs dark:border-gray-800 dark:bg-gray-900"

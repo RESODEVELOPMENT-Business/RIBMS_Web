@@ -95,6 +95,7 @@ export function getNavigation(role: string | undefined): NavItem[] {
             { name: "Đặc quyền thành viên", path: "/loyalty-tiers" },
             { name: "Đổi thưởng bằng điểm", path: "/point-rewards" },
             { name: "Giao diện Mobile", path: "/home-media" },
+            { name: "Bài viết thương hiệu", path: "/articles" },
           ],
         },
         {

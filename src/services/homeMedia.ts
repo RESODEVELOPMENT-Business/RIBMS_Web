@@ -54,6 +54,8 @@ export type HomeMediaActionOptions = {
   products: HomeMediaActionOption[];
   specialOffers: HomeMediaActionOption[];
   stampPrograms: HomeMediaActionOption[];
+  articles?: HomeMediaActionOption[];
+  articleOptions?: HomeMediaActionOption[];
 };
 
 export type HomeMediaStageUploadReceipt = {

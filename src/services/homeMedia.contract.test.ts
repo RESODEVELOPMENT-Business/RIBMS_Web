@@ -47,4 +47,11 @@ test('home-media page uses direct-save workflow without Draft/Publish buttons, s
   assert.match(homeMediaPageSource, /saveRes\.status === 202/);
   assert.match(homeMediaPageSource, /storagePurgeStatus === 'Pending'/);
   assert.match(homeMediaPageSource, /storagePurgeStatus === 'Completed'/);
+
+  // Supports ActionType = Article with published article options and unpublished warning state
+  assert.match(homeMediaServiceSource, /articles\?: HomeMediaActionOption\[\]/);
+  assert.match(homeMediaServiceSource, /articleOptions\?: HomeMediaActionOption\[\]/);
+  assert.match(homeMediaPageSource, /Article: 'Bài viết'/);
+  assert.match(homeMediaPageSource, /href="\/articles"/);
+  assert.match(homeMediaPageSource, /Đã gỡ hoặc chưa xuất bản/);
 });
