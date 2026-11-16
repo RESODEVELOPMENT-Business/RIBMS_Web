@@ -25,6 +25,10 @@ export function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
+  if (path === '/passion/privacy' || path === '/passion/delete-account') {
+    return NextResponse.next();
+  }
+
   // Public routes
   const publicRoutes = ['/signin'];
   const isPublicRoute = publicRoutes.some(route =>
