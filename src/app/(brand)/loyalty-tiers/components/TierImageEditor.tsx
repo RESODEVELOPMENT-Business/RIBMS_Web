@@ -119,7 +119,12 @@ export function TierImageEditor({
           </div>
 
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-            Chọn ảnh nền thẻ (JPG, PNG, WebP — tối đa 10 MB, tự động tối ưu WebP)
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
+              <span>Chọn ảnh nền thẻ (JPG, PNG, WebP — tối đa 10 MB, tự động tối ưu WebP)</span>
+              <span className="rounded bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                📐 Gợi ý: 960 × 600 px (Tỷ lệ 1.6:1)
+              </span>
+            </div>
             <input
               type="file"
               accept=".jpg,.jpeg,.png,.webp"
@@ -174,7 +179,12 @@ export function TierImageEditor({
 
           {onBadgeFileChange && (
             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-              Chọn ảnh huy hiệu vuông/trong suốt (PNG, WebP, JPG)
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
+                <span>Chọn ảnh huy hiệu vuông/trong suốt (PNG, WebP, JPG)</span>
+                <span className="rounded bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                  📐 Gợi ý: 512 × 512 px (1:1 vuông)
+                </span>
+              </div>
               <input
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp"

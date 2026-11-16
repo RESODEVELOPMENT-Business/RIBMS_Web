@@ -962,11 +962,16 @@ export default function BrandArticlesPage() {
               <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                      Ảnh bìa đầu bài viết (Cover Image)
-                    </h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                        Ảnh bìa đầu bài viết (Cover Image)
+                      </h3>
+                      <span className="rounded bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                        📐 Gợi ý: 1200 × 675 px (Tỷ lệ 16:9)
+                      </span>
+                    </div>
                     <p className="text-[11px] text-gray-500">
-                      Tự động chuẩn hóa WebP và giữ nguyên tỷ lệ khung hình tự
+                      Kích cỡ đề xuất cho thiết kế: 1200 × 675 px (tỷ lệ 16:9). Tự động chuẩn hóa WebP và giữ nguyên tỷ lệ khung hình tự
                       nhiên trên ứng dụng Mobile.
                     </p>
                   </div>
@@ -1161,7 +1166,7 @@ export default function BrandArticlesPage() {
 
                       {blk.type === 'image' && (
                         <div className="space-y-2.5">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
                             <label className="inline-flex cursor-pointer items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
                               <span>
                                 {blk.uploading
@@ -1180,6 +1185,9 @@ export default function BrandArticlesPage() {
                                 className="sr-only"
                               />
                             </label>
+                            <span className="text-[11px] text-gray-500">
+                              📐 Gợi ý thiết kế: chiều rộng 800 – 1200 px (tỷ lệ 16:9 hoặc 4:3)
+                            </span>
                           </div>
                           {blk.imageUrl && (
                             <div className="grid gap-3 sm:grid-cols-[160px_1fr]">

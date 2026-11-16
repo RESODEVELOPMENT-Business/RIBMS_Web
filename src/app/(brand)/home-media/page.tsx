@@ -50,6 +50,110 @@ type ItemState = Omit<
 const LIST_GROUPS: ListGroupKey[] = ['hero', 'promotion', 'about'];
 const HOME_GROUPS = ['hero', 'quickAction', 'promotion', 'about'] as const;
 
+export interface SlotDimensionSpec {
+  recommended: string;
+  minSize: string;
+  ratio: string;
+  fit: string;
+  note: string;
+}
+
+export const slotDimensionSpecs: Record<string, SlotDimensionSpec> = {
+  hero: {
+    recommended: '1000 × 870 px',
+    minSize: '650 × 566 px',
+    ratio: '325:283 (~1.15 : 1)',
+    fit: 'Toàn khung (Contain) — không bị cắt viền',
+    note: 'Banner trượt tự động đầu trang. Chừa lề an toàn 24px, tránh để chữ sát mép.',
+  },
+  quickAction: {
+    recommended: '528 × 291 px',
+    minSize: '400 × 220 px',
+    ratio: '~1.81 : 1 (khoảng 16:9)',
+    fit: 'Cắt vừa khung (Cover) — bo góc 12px',
+    note: '2 ô thao tác nhanh (Đặt món & Đổi quà) dưới banner, cao 90dp trên Mobile.',
+  },
+  'quick-action-order': {
+    recommended: '528 × 291 px',
+    minSize: '400 × 220 px',
+    ratio: '~1.81 : 1 (khoảng 16:9)',
+    fit: 'Cắt vừa khung (Cover) — bo góc 12px',
+    note: 'Ô Đặt hàng / Giao hàng nhanh',
+  },
+  'quick-action-gift': {
+    recommended: '528 × 291 px',
+    minSize: '400 × 220 px',
+    ratio: '~1.81 : 1 (khoảng 16:9)',
+    fit: 'Cắt vừa khung (Cover) — bo góc 12px',
+    note: 'Ô Đổi ưu đãi / Quà tặng nhanh',
+  },
+  promotion: {
+    recommended: '1500 × 624 px',
+    minSize: '1000 × 416 px',
+    ratio: '500:208 (2.4 : 1)',
+    fit: 'Cắt vừa khung (Cover) — bo góc 12px',
+    note: 'Thẻ ưu đãi ngang rộng hiển thị danh sách dọc trên Trang chủ Mobile.',
+  },
+  about: {
+    recommended: '1000 × 625 px',
+    minSize: '800 × 500 px',
+    ratio: '16:10 (~1.63 : 1)',
+    fit: 'Cắt vừa khung (Cover) — bo góc 12px',
+    note: 'Thẻ câu chuyện thương hiệu trượt ngang ở chân trang chủ, cao 250dp.',
+  },
+  account: {
+    recommended: 'Theo từng ô riêng',
+    minSize: '400 × 200 px',
+    ratio: 'Tùy ô',
+    fit: 'Cắt vừa khung (Cover)',
+    note: 'Mỗi ô tiện ích Tài khoản có tỷ lệ khung hình riêng, xem chi tiết từng thẻ.',
+  },
+  'account-coupons': {
+    recommended: '520 × 540 px',
+    minSize: '400 × 415 px',
+    ratio: '~1 : 1 (gần vuông)',
+    fit: 'Cắt vừa khung (Cover) — bo góc 16px',
+    note: 'Ô lớn chiếm 2 dòng bên trái màn hình Tài khoản (cao 150dp).',
+  },
+  'account-credits': {
+    recommended: '520 × 260 px',
+    minSize: '400 × 200 px',
+    ratio: '2 : 1 (ngang)',
+    fit: 'Cắt vừa khung (Cover) — bo góc 16px',
+    note: 'Ô nhỏ phía trên bên phải màn hình Tài khoản (cao 70dp).',
+  },
+  'account-referrals': {
+    recommended: '520 × 260 px',
+    minSize: '400 × 200 px',
+    ratio: '2 : 1 (ngang)',
+    fit: 'Cắt vừa khung (Cover) — bo góc 16px',
+    note: 'Ô nhỏ phía dưới bên phải màn hình Tài khoản (cao 70dp).',
+  },
+  'account-voucher-header': {
+    recommended: '800 × 450 px hoặc PNG 600 × 600 px',
+    minSize: '400 × 400 px',
+    ratio: '16:9 hoặc 1:1 vuông',
+    fit: 'Toàn khung (Contain) / Mascot tách nền',
+    note: 'Minh họa góc phải header trang Kho ưu đãi của tôi (My Coupons).',
+  },
+};
+
+export function getSlotDimensionSpec(groupKey: string, contentKey?: string): SlotDimensionSpec {
+  if (contentKey && slotDimensionSpecs[contentKey]) {
+    return slotDimensionSpecs[contentKey];
+  }
+  if (slotDimensionSpecs[groupKey]) {
+    return slotDimensionSpecs[groupKey];
+  }
+  return {
+    recommended: '1200 × 675 px',
+    minSize: '600 × 338 px',
+    ratio: '16:9',
+    fit: 'Cắt vừa khung (Cover)',
+    note: 'Tối đa 10 MB, hỗ trợ JPG, PNG, WebP',
+  };
+}
+
 const groupMeta: Record<
   string,
   { title: string; subtitle: string; aspectHint: string }
@@ -58,31 +162,31 @@ const groupMeta: Record<
     title: 'Ảnh đầu trang',
     subtitle:
       'Danh sách banner trượt ngang đầu màn hình Trang chủ. Không giới hạn số lượng, hỗ trợ kéo thả nhiều ảnh và sắp xếp thứ tự.',
-    aspectHint: 'Tỷ lệ khuyến nghị 16:9 hoặc 2:1',
+    aspectHint: 'Khuyến nghị: 1000 × 870 px (Tỷ lệ 325:283)',
   },
   quickAction: {
     title: 'Thao tác nhanh',
     subtitle:
       'Hai ô điều hướng cố định dưới banner đầu trang (Đặt món & Đổi quà).',
-    aspectHint: '2 ô cố định',
+    aspectHint: 'Khuyến nghị: 528 × 291 px (~1.81:1, 2 ô)',
   },
   promotion: {
     title: 'Ảnh ưu đãi',
     subtitle:
       'Danh sách thẻ chương trình ưu đãi hiển thị trên Trang chủ Mobile. Không giới hạn số lượng, hỗ trợ kéo thả và đổi thứ tự.',
-    aspectHint: 'Tỷ lệ khuyến nghị 16:9',
+    aspectHint: 'Khuyến nghị: 1500 × 624 px (Tỷ lệ 500:208)',
   },
   about: {
     title: 'Ảnh giới thiệu',
     subtitle:
       'Danh sách hình ảnh câu chuyện thương hiệu / Về chúng tôi trên Trang chủ Mobile. Không giới hạn số lượng.',
-    aspectHint: 'Tỷ lệ khuyến nghị 16:9 hoặc 4:3',
+    aspectHint: 'Khuyến nghị: 1000 × 625 px (Tỷ lệ 16:10)',
   },
   account: {
     title: 'Tiện ích Tài khoản',
     subtitle:
       'Ảnh nền cho các ô tiện ích tại màn hình Tài khoản và ảnh tiêu đề Kho ưu đãi. Giữ nguyên số lượng voucher, điểm thưởng và thao tác gốc trên ứng dụng.',
-    aspectHint: '3 ô tiện ích + 1 ảnh tiêu đề Kho ưu đãi',
+    aspectHint: 'Kích cỡ riêng từng ô (xem thẻ bên dưới)',
   },
 };
 
@@ -115,9 +219,7 @@ const actionTypeLabels: Record<string, string> = {
 };
 
 function isListGroup(groupKey: string): groupKey is ListGroupKey {
-  return (
-    groupKey === 'hero' || groupKey === 'promotion' || groupKey === 'about'
-  );
+  return LIST_GROUPS.includes(groupKey as ListGroupKey);
 }
 
 function getTabForGroup(groupKey: string): ActiveTab {
@@ -165,7 +267,7 @@ function DraggableListRow({
     }),
   });
 
-  drag(drop(rowRef));
+  drag(drop(rowRef)); // eslint-disable-line react-hooks/refs
 
   return (
     <div
@@ -208,6 +310,8 @@ function SectionMultiDropzone({
     disabled,
   });
 
+  const spec = getSlotDimensionSpec(groupKey);
+
   return (
     <div
       {...getRootProps()}
@@ -222,9 +326,17 @@ function SectionMultiDropzone({
         <p className="font-semibold text-gray-800 dark:text-white">
           Kéo thả nhiều ảnh vào đây để thêm nhanh vào {groupMeta[groupKey]?.title}
         </p>
-        <p className="mt-0.5 text-gray-500 dark:text-gray-400">
-          Hỗ trợ JPG, PNG, WebP (tối đa 10 MB/ảnh, tự động chuẩn hóa WebP khi lưu).
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+            📐 Chuẩn: {spec.recommended}
+          </span>
+          <span className="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+            Tỷ lệ: {spec.ratio}
+          </span>
+          <span className="text-[11px] text-gray-500 dark:text-gray-400">
+            • Tối đa 10 MB/ảnh (JPG, PNG, WebP)
+          </span>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         <button
@@ -251,6 +363,7 @@ function SectionMultiDropzone({
 export default function HomeMediaPage() {
   const user = useAuthStore((state) => state.user);
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
+  const [showGuide, setShowGuide] = useState(false);
   const [draft, setDraft] = useState<HomeMediaDraft | null>(null);
   const [items, setItems] = useState<ItemState[]>([]);
   const [deletedTabs, setDeletedTabs] = useState<{ home: boolean; account: boolean }>({
@@ -901,6 +1014,7 @@ export default function HomeMediaPage() {
               const cardTitle = getFriendlyCardLabel(item, idx);
               const choices = targetOptions(item.actionType);
               const currentUrl = resolveDisplayImageUrl(item);
+              const itemSpec = getSlotDimensionSpec(item.groupKey, item.contentKey);
 
               const cardContent = (
                 <article
@@ -922,8 +1036,11 @@ export default function HomeMediaPage() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center px-2 text-center text-xs text-gray-400">
-                          Kéo ảnh vào ô hoặc bấm Chọn tệp
+                        <div className="flex h-full flex-col items-center justify-center p-2 text-center text-xs text-gray-400">
+                          <span>Kéo ảnh hoặc Chọn tệp</span>
+                          <span className="mt-1 rounded bg-gray-200/90 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                            {itemSpec.recommended}
+                          </span>
                         </div>
                       )}
                       <span className="absolute left-2 top-2 rounded bg-black/65 px-2 py-0.5 text-[11px] font-semibold text-white">
@@ -933,9 +1050,12 @@ export default function HomeMediaPage() {
 
                     <div className="min-w-0 flex-1 space-y-2.5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-bold text-sm text-gray-900 dark:text-white">
                             {cardTitle}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                            📐 {itemSpec.recommended} ({itemSpec.ratio})
                           </span>
                           {item.stagedReceipt && (
                             <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
@@ -1017,6 +1137,10 @@ export default function HomeMediaPage() {
                             className="sr-only"
                           />
                         </label>
+
+                        <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                          {itemSpec.fit} • {itemSpec.note}
+                        </span>
 
                         {group !== 'account' && (
                           <button
@@ -1270,6 +1394,189 @@ export default function HomeMediaPage() {
             </div>
             <span className="font-semibold text-brand-600">Mở →</span>
           </Link>
+        </section>
+
+        {/* Designer Dimension Reference Card */}
+        <section
+          aria-label="Quy chuẩn kích thước hình ảnh cho thiết kế"
+          className="rounded-2xl border border-brand-200 bg-brand-50/40 p-4 sm:p-5 dark:border-brand-500/20 dark:bg-brand-500/5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-base text-white shadow-theme-xs">
+                📐
+              </span>
+              <div>
+                <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+                  Gợi ý kích thước ảnh cho Thiết kế (Designer Guidelines)
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Kích cỡ pixel và tỷ lệ khung hình chuẩn tối ưu cho ứng dụng khách hàng (Mobile App).
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="hidden text-xs text-gray-500 sm:inline">
+                Tab hiện tại: <strong>{activeTab === 'home' ? 'Trang chủ' : 'Tài khoản'}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowGuide((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 shadow-theme-xs transition hover:bg-brand-50 dark:border-brand-500/30 dark:bg-gray-800 dark:text-brand-400"
+              >
+                <span>{showGuide ? 'Thu gọn bảng tra cứu' : 'Xem bảng tra cứu kích thước'}</span>
+                <span>{showGuide ? '▴' : '▾'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick summary chips for current tab */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-brand-100 pt-3 text-xs dark:border-brand-500/10">
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
+              {activeTab === 'home' ? 'Kích thước chuẩn Trang chủ:' : 'Kích thước chuẩn Tài khoản:'}
+            </span>
+            {activeTab === 'home' ? (
+              <>
+                <span className="rounded-md bg-white px-2 py-0.5 text-gray-700 shadow-2xs dark:bg-gray-800 dark:text-gray-200">
+                  Banner đầu trang: <strong className="text-brand-600 dark:text-brand-400">1000 × 870 px</strong> (325:283)
+                </span>
+                <span className="rounded-md bg-white px-2 py-0.5 text-gray-700 shadow-2xs dark:bg-gray-800 dark:text-gray-200">
+                  Thao tác nhanh: <strong className="text-brand-600 dark:text-brand-400">528 × 291 px</strong> (1.81:1)
+                </span>
+                <span className="rounded-md bg-white px-2 py-0.5 text-gray-700 shadow-2xs dark:bg-gray-800 dark:text-gray-200">
+                  Ảnh ưu đãi: <strong className="text-brand-600 dark:text-brand-400">1500 × 624 px</strong> (500:208)
+                </span>
+                <span className="rounded-md bg-white px-2 py-0.5 text-gray-700 shadow-2xs dark:bg-gray-800 dark:text-gray-200">
+                  Ảnh giới thiệu: <strong className="text-brand-600 dark:text-brand-400">1000 × 625 px</strong> (16:10)
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="rounded-md bg-white px-2 py-0.5 text-gray-700 shadow-2xs dark:bg-gray-800 dark:text-gray-200">
+                  Kho ưu đãi: <strong className="text-brand-600 dark:text-brand-400">520 × 540 px</strong> (~1:1)
+                </span>
+                <span className="rounded-md bg-white px-2 py-0.5 text-gray-700 shadow-2xs dark:bg-gray-800 dark:text-gray-200">
+                  Đổi voucher &amp; Giới thiệu bạn: <strong className="text-brand-600 dark:text-brand-400">520 × 260 px</strong> (2:1)
+                </span>
+                <span className="rounded-md bg-white px-2 py-0.5 text-gray-700 shadow-2xs dark:bg-gray-800 dark:text-gray-200">
+                  Mascot Kho ưu đãi: <strong className="text-brand-600 dark:text-brand-400">800 × 450 px</strong> (hoặc PNG 600×600)
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Collapsible full cheat sheet */}
+          {showGuide && (
+            <div className="mt-4 overflow-x-auto rounded-xl border border-brand-100 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-gray-100 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-800/80 dark:text-gray-300">
+                  <tr>
+                    <th className="px-3.5 py-2.5 font-bold">Vị trí hiển thị</th>
+                    <th className="px-3.5 py-2.5 font-bold">Kích thước đề xuất</th>
+                    <th className="px-3.5 py-2.5 font-bold">Tỷ lệ khung hình</th>
+                    <th className="px-3.5 py-2.5 font-bold">Hiển thị trên App (Fit)</th>
+                    <th className="px-3.5 py-2.5 font-bold">Ghi chú cho Thiết kế</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-gray-600 dark:divide-gray-800 dark:text-gray-300">
+                  <tr>
+                    <td className="px-3.5 py-2.5 font-semibold text-gray-900 dark:text-white">
+                      Ảnh đầu trang (Hero Banner)
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-400">
+                      1000 × 870 px
+                    </td>
+                    <td className="px-3.5 py-2.5">325:283 (~1.15 : 1)</td>
+                    <td className="px-3.5 py-2.5">Toàn khung (Contain)</td>
+                    <td className="px-3.5 py-2.5 text-gray-500">
+                      Banner trượt ngang tự động. Giữ trọn nội dung ảnh, chừa lề an toàn 24px.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3.5 py-2.5 font-semibold text-gray-900 dark:text-white">
+                      Thao tác nhanh (Đặt món &amp; Đổi quà)
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-400">
+                      528 × 291 px
+                    </td>
+                    <td className="px-3.5 py-2.5">~1.81 : 1 (gần 16:9)</td>
+                    <td className="px-3.5 py-2.5">Cắt vừa khung (Cover)</td>
+                    <td className="px-3.5 py-2.5 text-gray-500">
+                      2 ô cố định song song dưới banner, cao 90dp, bo góc 12px.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3.5 py-2.5 font-semibold text-gray-900 dark:text-white">
+                      Ảnh ưu đãi (Promotion)
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-400">
+                      1500 × 624 px
+                    </td>
+                    <td className="px-3.5 py-2.5">500:208 (2.4 : 1)</td>
+                    <td className="px-3.5 py-2.5">Cắt vừa khung (Cover)</td>
+                    <td className="px-3.5 py-2.5 text-gray-500">
+                      Banner thẻ ưu đãi ngang rộng, hiển thị danh sách dọc trên Trang chủ Mobile.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3.5 py-2.5 font-semibold text-gray-900 dark:text-white">
+                      Ảnh giới thiệu (About Us)
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-400">
+                      1000 × 625 px
+                    </td>
+                    <td className="px-3.5 py-2.5">16:10 (~1.63 : 1)</td>
+                    <td className="px-3.5 py-2.5">Cắt vừa khung (Cover)</td>
+                    <td className="px-3.5 py-2.5 text-gray-500">
+                      Thẻ trượt ngang câu chuyện thương hiệu ở chân trang chủ, cao 250dp.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3.5 py-2.5 font-semibold text-gray-900 dark:text-white">
+                      Kho ưu đãi (Account Coupons)
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-400">
+                      520 × 540 px
+                    </td>
+                    <td className="px-3.5 py-2.5">~1 : 1 (gần vuông)</td>
+                    <td className="px-3.5 py-2.5">Cắt vừa khung (Cover)</td>
+                    <td className="px-3.5 py-2.5 text-gray-500">
+                      Ô lớn bên trái màn hình Tài khoản (chiếm 2 dòng, cao 150dp, bo góc 16px).
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3.5 py-2.5 font-semibold text-gray-900 dark:text-white">
+                      Đổi voucher &amp; Giới thiệu bạn
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-400">
+                      520 × 260 px
+                    </td>
+                    <td className="px-3.5 py-2.5">2 : 1 (ngang)</td>
+                    <td className="px-3.5 py-2.5">Cắt vừa khung (Cover)</td>
+                    <td className="px-3.5 py-2.5 text-gray-500">
+                      2 ô nhỏ bên phải màn hình Tài khoản (cao 70dp, bo góc 16px).
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-3.5 py-2.5 font-semibold text-gray-900 dark:text-white">
+                      Mascot / Tiêu đề Kho ưu đãi
+                    </td>
+                    <td className="px-3.5 py-2.5 font-mono font-bold text-brand-600 dark:text-brand-400">
+                      800 × 450 px
+                    </td>
+                    <td className="px-3.5 py-2.5">16:9 hoặc 1:1</td>
+                    <td className="px-3.5 py-2.5">Mascot / Toàn khung</td>
+                    <td className="px-3.5 py-2.5 text-gray-500">
+                      Minh họa góc phải header Kho ưu đãi. Khuyên dùng PNG tách nền 600×600 px.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="bg-gray-50/70 p-3 text-[11px] text-gray-500 dark:bg-gray-800/40 dark:text-gray-400">
+                💡 <strong>Mẹo cho Designer:</strong> Định dạng hỗ trợ: JPG, PNG, WebP (dung lượng tối đa 10 MB/ảnh). Khi lưu, hệ thống tự động nén và chuẩn hóa sang định dạng WebP hiện đại giúp hình ảnh giữ nguyên độ sắc nét cao mà tốc độ tải trên ứng dụng di động cực nhanh.
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Tabs */}
