@@ -117,9 +117,16 @@ export default function BrandArticlesPage() {
   const [conflict, setConflict] = useState<ConflictState | null>(null);
 
   const hydrateEditorFromSnapshot = useCallback(
-    (snapshot: BrandArticleSnapshot, nextDetail: BrandArticleDetail | null) => {
-      setActiveArticle(nextDetail);
-      setEtag(nextDetail?.etag ?? '');
+    (
+      snapshot: BrandArticleSnapshot,
+      nextDetail: (BrandArticleDetail & { eTag?: string; ETag?: string }) | null,
+    ) => {
+      const resolvedEtag =
+        nextDetail?.etag || nextDetail?.eTag || nextDetail?.ETag || '';
+      setActiveArticle(
+        nextDetail ? { ...nextDetail, etag: resolvedEtag } : null,
+      );
+      setEtag(resolvedEtag);
       setTitle(snapshot.title ?? '');
       setCoverImageUrl(snapshot.coverImageUrl ?? '');
       setCoverAlt(snapshot.coverAlt ?? '');
@@ -257,8 +264,13 @@ export default function BrandArticlesPage() {
       if (!detail) {
         throw new Error('Không tìm thấy chi tiết bài viết.');
       }
+      const resolvedEtag =
+        detail.etag || (detail as unknown as { eTag?: string }).eTag || '';
       setEditorMode('edit');
-      hydrateEditorFromSnapshot(detail.draft, detail);
+      hydrateEditorFromSnapshot(detail.draft, {
+        ...detail,
+        etag: resolvedEtag,
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -440,6 +452,8 @@ export default function BrandArticlesPage() {
         message?: string;
         data?: {
           etag?: string;
+          eTag?: string;
+          ETag?: string;
           liveReferences?: BrandArticleLiveReference[];
         };
       };
@@ -457,10 +471,13 @@ export default function BrandArticlesPage() {
         setError('');
         return;
       }
+      const rawConflict = anyErr?.data?.data;
+      const latestServerEtag =
+        rawConflict?.etag || rawConflict?.eTag || rawConflict?.ETag;
       setConflict({
         kind: 'etag',
         message: msg,
-        latestServerEtag: anyErr?.data?.data?.etag,
+        latestServerEtag,
       });
       setError('');
       return;
@@ -492,9 +509,14 @@ export default function BrandArticlesPage() {
         hydrateEditorFromSnapshot(created.draft, created);
         setMessage('Đã tạo và lưu bản nháp bài viết mới.');
       } else {
+        const currentEtag =
+          etag ||
+          activeArticle.etag ||
+          (activeArticle as unknown as { eTag?: string }).eTag ||
+          '';
         const saveRes = await saveBrandArticleDraft(
           activeArticle.id,
-          etag,
+          currentEtag,
           currentSnapshot,
         );
         const updated = saveRes.data;
@@ -530,7 +552,11 @@ export default function BrandArticlesPage() {
 
     try {
       let targetId = activeArticle?.id;
-      let targetEtag = etag;
+      let targetEtag =
+        etag ||
+        activeArticle?.etag ||
+        (activeArticle as unknown as { eTag?: string } | null)?.eTag ||
+        '';
 
       if (editorMode === 'create' || !activeArticle) {
         const createRes = await createBrandArticleDraft(currentSnapshot);
@@ -541,11 +567,14 @@ export default function BrandArticlesPage() {
           );
         }
         targetId = created.id;
-        targetEtag = created.etag;
+        targetEtag =
+          created.etag ||
+          (created as unknown as { eTag?: string }).eTag ||
+          '';
       } else if (dirty) {
         const saveRes = await saveBrandArticleDraft(
           activeArticle.id,
-          etag,
+          targetEtag,
           currentSnapshot,
         );
         const saved = saveRes.data;
@@ -555,7 +584,10 @@ export default function BrandArticlesPage() {
           );
         }
         targetId = saved.id;
-        targetEtag = saved.etag;
+        targetEtag =
+          saved.etag ||
+          (saved as unknown as { eTag?: string }).eTag ||
+          '';
       }
 
       if (!targetId) {
@@ -598,7 +630,12 @@ export default function BrandArticlesPage() {
     setConflict(null);
 
     try {
-      const res = await unpublishBrandArticle(activeArticle.id, etag);
+      const currentEtag =
+        etag ||
+        activeArticle.etag ||
+        (activeArticle as unknown as { eTag?: string }).eTag ||
+        '';
+      const res = await unpublishBrandArticle(activeArticle.id, currentEtag);
       const updated = res.data;
       if (updated) {
         hydrateEditorFromSnapshot(updated.draft, updated);

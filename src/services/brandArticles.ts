@@ -36,6 +36,7 @@ export type BrandArticleListItem = {
   publishedAt?: string | null;
   updatedAt: string;
   etag: string;
+  eTag?: string;
 };
 
 export type BrandArticleDetail = {
@@ -47,6 +48,7 @@ export type BrandArticleDetail = {
   publishedAt?: string | null;
   updatedAt: string;
   etag: string;
+  eTag?: string;
   draft: BrandArticleSnapshot;
   published?: BrandArticleSnapshot | null;
 };
@@ -91,7 +93,18 @@ export const ARTICLE_CTA_ROUTE_OPTIONS: { key: string; label: string }[] = [
   { key: 'home', label: 'Màn hình Trang chủ' },
 ];
 
-export const getBrandArticles = (params?: {
+const normalizeArticleDetail = (
+  res: ApiResponse<BrandArticleDetail>,
+): ApiResponse<BrandArticleDetail> => {
+  if (res.data) {
+    const raw = res.data as BrandArticleDetail & { eTag?: string; ETag?: string };
+    const resolvedEtag = raw.etag || raw.eTag || raw.ETag || '';
+    res.data.etag = resolvedEtag;
+  }
+  return res;
+};
+
+export const getBrandArticles = async (params?: {
   page?: number;
   size?: number;
   search?: string;
@@ -106,26 +119,45 @@ export const getBrandArticles = (params?: {
   const url = qs
     ? `${BRAND_ARTICLES_ENDPOINT}?${qs}`
     : BRAND_ARTICLES_ENDPOINT;
-  return apiClient<ApiResponse<BrandArticleListResponse>>(url);
+  const res = await apiClient<ApiResponse<BrandArticleListResponse>>(url);
+  if (res.data?.items) {
+    res.data.items = res.data.items.map((item) => {
+      const raw = item as BrandArticleListItem & { eTag?: string; ETag?: string };
+      return {
+        ...item,
+        etag: raw.etag || raw.eTag || raw.ETag || '',
+      };
+    });
+  }
+  return res;
 };
 
-export const getBrandArticleById = (id: number) =>
-  apiClient<ApiResponse<BrandArticleDetail>>(
+export const getBrandArticleById = async (id: number) => {
+  const res = await apiClient<ApiResponse<BrandArticleDetail>>(
     `${BRAND_ARTICLES_ENDPOINT}/${id}`,
   );
+  return normalizeArticleDetail(res);
+};
 
-export const createBrandArticleDraft = (draft: BrandArticleSnapshot) =>
-  apiClient<ApiResponse<BrandArticleDetail>>(BRAND_ARTICLES_ENDPOINT, {
-    method: 'POST',
-    body: JSON.stringify({ draft }),
-  });
+export const createBrandArticleDraft = async (draft: BrandArticleSnapshot) => {
+  const res = await apiClient<ApiResponse<BrandArticleDetail>>(
+    BRAND_ARTICLES_ENDPOINT,
+    {
+      method: 'POST',
+      body: JSON.stringify({ draft }),
+    },
+  );
+  return normalizeArticleDetail(res);
+};
 
-export const saveBrandArticleDraft = (
+export const saveBrandArticleDraft = async (
   id: number,
   etag: string,
   draft: BrandArticleSnapshot,
-) =>
-  apiClient<ApiResponse<BrandArticleDetail>>(
+) => {
+  const cleanEtag = (etag || '').trim().replace(/^"|"$/g, '');
+  etag = cleanEtag;
+  const res = await apiClient<ApiResponse<BrandArticleDetail>>(
     `${BRAND_ARTICLES_ENDPOINT}/${id}`,
     {
       method: 'PUT',
@@ -135,9 +167,13 @@ export const saveBrandArticleDraft = (
       body: JSON.stringify({ etag, draft }),
     },
   );
+  return normalizeArticleDetail(res);
+};
 
-export const publishBrandArticle = (id: number, etag: string) =>
-  apiClient<ApiResponse<BrandArticleDetail>>(
+export const publishBrandArticle = async (id: number, etag: string) => {
+  const cleanEtag = (etag || '').trim().replace(/^"|"$/g, '');
+  etag = cleanEtag;
+  const res = await apiClient<ApiResponse<BrandArticleDetail>>(
     `${BRAND_ARTICLES_ENDPOINT}/${id}/publish`,
     {
       method: 'POST',
@@ -147,9 +183,13 @@ export const publishBrandArticle = (id: number, etag: string) =>
       body: JSON.stringify({ etag }),
     },
   );
+  return normalizeArticleDetail(res);
+};
 
-export const unpublishBrandArticle = (id: number, etag: string) =>
-  apiClient<ApiResponse<BrandArticleDetail>>(
+export const unpublishBrandArticle = async (id: number, etag: string) => {
+  const cleanEtag = (etag || '').trim().replace(/^"|"$/g, '');
+  etag = cleanEtag;
+  const res = await apiClient<ApiResponse<BrandArticleDetail>>(
     `${BRAND_ARTICLES_ENDPOINT}/${id}/unpublish`,
     {
       method: 'POST',
@@ -159,6 +199,8 @@ export const unpublishBrandArticle = (id: number, etag: string) =>
       body: JSON.stringify({ etag }),
     },
   );
+  return normalizeArticleDetail(res);
+};
 
 export const uploadBrandArticleImage = (image: File) => {
   const form = new FormData();
