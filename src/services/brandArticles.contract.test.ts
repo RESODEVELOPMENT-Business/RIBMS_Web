@@ -40,12 +40,20 @@ test('brandArticles service calls /brand/articles with ETag / If-Match headers a
   );
   assert.match(
     brandArticlesServiceSource,
+    /export const deleteBrandArticle =/,
+  );
+  assert.match(
+    brandArticlesServiceSource,
     /export const uploadBrandArticleImage =/,
   );
   assert.match(brandArticlesServiceSource, /'If-Match': `"\$\{etag\}"`/);
   assert.match(
     brandArticlesServiceSource,
     /\$\{BRAND_ARTICLES_ENDPOINT\}\/upload-image/,
+  );
+  assert.match(
+    brandArticlesServiceSource,
+    /\{ key: 'auth', label: 'Màn hình Đăng ký \/ Đăng nhập' \}/,
   );
 });
 
@@ -61,6 +69,10 @@ test('articles admin page enforces BrandManager guard, supports heading/paragrap
   assert.match(brandArticlesPageSource, /Lưu nháp/);
   assert.match(brandArticlesPageSource, /Xuất bản/);
   assert.match(brandArticlesPageSource, /Gỡ xuất bản/);
+  assert.match(brandArticlesPageSource, /Xóa bài viết/);
+  assert.match(brandArticlesPageSource, /Chuyển thành Đoạn văn/);
+  assert.match(brandArticlesPageSource, /Chuyển thành Tiêu đề/);
+  assert.match(brandArticlesPageSource, /datetime-local/);
   assert.match(brandArticlesPageSource, /Có bản nháp mới chưa xuất bản/);
   assert.match(brandArticlesPageSource, /↑ Lên/);
   assert.match(brandArticlesPageSource, /↓ Xuống/);

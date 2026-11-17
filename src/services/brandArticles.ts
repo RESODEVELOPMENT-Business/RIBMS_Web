@@ -19,11 +19,19 @@ export type BrandArticleSnapshot = {
   title: string;
   coverImageUrl?: string | null;
   coverAlt?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   blocks: BrandArticleBlock[];
   cta?: BrandArticleCta | null;
 };
 
-export type BrandArticleStatus = 'Draft' | 'Published' | 'Unpublished' | string;
+export type BrandArticleStatus =
+  | 'Draft'
+  | 'Published'
+  | 'Unpublished'
+  | 'Scheduled'
+  | 'Expired'
+  | string;
 
 export type BrandArticleListItem = {
   id: number;
@@ -34,6 +42,8 @@ export type BrandArticleListItem = {
   status: BrandArticleStatus;
   hasUnpublishedChanges: boolean;
   publishedAt?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   updatedAt: string;
   etag: string;
   eTag?: string;
@@ -43,9 +53,12 @@ export type BrandArticleDetail = {
   id: number;
   brandId: number;
   storeId: number;
+  title?: string;
   status: BrandArticleStatus;
   hasUnpublishedChanges: boolean;
   publishedAt?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   updatedAt: string;
   etag: string;
   eTag?: string;
@@ -90,6 +103,7 @@ export const ARTICLE_CTA_ROUTE_OPTIONS: { key: string; label: string }[] = [
   { key: 'myCoupons', label: 'Màn hình Ưu đãi của tôi' },
   { key: 'stampCard', label: 'Màn hình Tích tem đổi quà' },
   { key: 'loyaltyCredits', label: 'Màn hình Tích điểm thành viên' },
+  { key: 'auth', label: 'Màn hình Đăng ký / Đăng nhập' },
   { key: 'home', label: 'Màn hình Trang chủ' },
 ];
 
@@ -200,6 +214,12 @@ export const unpublishBrandArticle = async (id: number, etag: string) => {
     },
   );
   return normalizeArticleDetail(res);
+};
+
+export const deleteBrandArticle = async (id: number) => {
+  return apiClient<ApiResponse<null>>(`${BRAND_ARTICLES_ENDPOINT}/${id}`, {
+    method: 'DELETE',
+  });
 };
 
 export const uploadBrandArticleImage = (image: File) => {

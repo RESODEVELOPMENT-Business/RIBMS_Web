@@ -14,6 +14,7 @@ import { optimizeImageForUpload } from '@/services/imageOptimizer';
 import {
   ARTICLE_CTA_ROUTE_OPTIONS,
   createBrandArticleDraft,
+  deleteBrandArticle,
   getBrandArticleById,
   getBrandArticles,
   publishBrandArticle,
@@ -55,6 +56,16 @@ const statusLabels: Record<string, { label: string; className: string }> = {
     className:
       'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
   },
+  Scheduled: {
+    label: 'Đã lên lịch',
+    className:
+      'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300',
+  },
+  Expired: {
+    label: 'Đã hết hạn',
+    className:
+      'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
+  },
   Unpublished: {
     label: 'Đã gỡ xuất bản',
     className:
@@ -70,6 +81,26 @@ const blockTypeLabels: Record<BrandArticleBlockType, string> = {
 
 function makeLocalId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function toLocalDatetimeInput(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function toIsoString(val?: string | null): string | null {
+  if (!val || !val.trim()) return null;
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
 }
 
 function formatDateTime(iso?: string | null): string {
@@ -104,6 +135,8 @@ export default function BrandArticlesPage() {
   const [title, setTitle] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [coverAlt, setCoverAlt] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
   const [blocks, setBlocks] = useState<EditableBlock[]>([]);
   const [ctaEnabled, setCtaEnabled] = useState(false);
@@ -130,6 +163,8 @@ export default function BrandArticlesPage() {
       setTitle(snapshot.title ?? '');
       setCoverImageUrl(snapshot.coverImageUrl ?? '');
       setCoverAlt(snapshot.coverAlt ?? '');
+      setStartDate(toLocalDatetimeInput(snapshot.startDate));
+      setEndDate(toLocalDatetimeInput(snapshot.endDate));
       setBlocks(
         (snapshot.blocks ?? []).map((b, idx) => ({
           localId: makeLocalId(`blk-${idx}`),
@@ -199,6 +234,8 @@ export default function BrandArticlesPage() {
       title: title.trim(),
       coverImageUrl: coverImageUrl.trim() || null,
       coverAlt: coverAlt.trim() || null,
+      startDate: toIsoString(startDate),
+      endDate: toIsoString(endDate),
       blocks: blocks.map((b) =>
         b.type === 'image'
           ? {
@@ -218,7 +255,17 @@ export default function BrandArticlesPage() {
           }
         : null,
     }),
-    [blocks, coverAlt, coverImageUrl, ctaEnabled, ctaLabel, ctaRouteKey, title],
+    [
+      blocks,
+      coverAlt,
+      coverImageUrl,
+      ctaEnabled,
+      ctaLabel,
+      ctaRouteKey,
+      endDate,
+      startDate,
+      title,
+    ],
   );
 
   if (user?.role === 'Administrator') return null;
@@ -241,6 +288,8 @@ export default function BrandArticlesPage() {
         title: '',
         coverImageUrl: null,
         coverAlt: null,
+        startDate: null,
+        endDate: null,
         blocks: [
           {
             type: 'paragraph',
@@ -361,6 +410,18 @@ export default function BrandArticlesPage() {
     setDirty(true);
   };
 
+  const handleChangeBlockType = (
+    localId: string,
+    newType: BrandArticleBlockType,
+  ) => {
+    setBlocks((prev) =>
+      prev.map((blk) =>
+        blk.localId === localId ? { ...blk, type: newType } : blk,
+      ),
+    );
+    setDirty(true);
+  };
+
   const handleUploadBlockImage = async (
     localId: string,
     event: ChangeEvent<HTMLInputElement>,
@@ -401,6 +462,13 @@ export default function BrandArticlesPage() {
     }
     if (blocks.length > 50) {
       return 'Bài viết tối đa 50 khối nội dung.';
+    }
+    if (startDate && endDate) {
+      const s = new Date(startDate).getTime();
+      const e = new Date(endDate).getTime();
+      if (!Number.isNaN(s) && !Number.isNaN(e) && s > e) {
+        return 'Thời gian bắt đầu không được lớn hơn thời gian kết thúc.';
+      }
     }
     if (requireCompleteForPublish && blocks.length === 0) {
       return 'Bài viết cần có ít nhất 1 khối nội dung trước khi xuất bản.';
@@ -486,7 +554,41 @@ export default function BrandArticlesPage() {
     setError(msg);
   };
 
+  const handleDeleteArticle = async (targetId: number, targetTitle?: string) => {
+    if (busy) return;
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.confirm === 'function'
+    ) {
+      const ok = window.confirm(
+        `Bạn có chắc muốn xóa vĩnh viễn bài viết "${targetTitle || 'này'}" (#${targetId})?\n\nHành động này không thể hoàn tác. Nếu bài viết đang được gắn trên Trang chủ, hệ thống sẽ chặn thao tác xóa và hiển thị vị trí cần gỡ trước.`,
+      );
+      if (!ok) return;
+    }
+
+    setBusy(true);
+    setMessage('');
+    setError('');
+    setConflict(null);
+
+    try {
+      await deleteBrandArticle(targetId);
+      setMessage(`Đã xóa bài viết #${targetId} thành công.`);
+      if (activeArticle?.id === targetId) {
+        setEditorMode('closed');
+        setActiveArticle(null);
+        setEtag('');
+      }
+      await loadList();
+    } catch (err) {
+      handleApiError(err, 'Không thể xóa bài viết.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSaveDraft = async () => {
+    if (busy) return;
     const validationErr = validateClientSide(false);
     if (validationErr) {
       setError(validationErr);
@@ -539,6 +641,7 @@ export default function BrandArticlesPage() {
   };
 
   const handlePublish = async () => {
+    if (busy) return;
     const validationErr = validateClientSide(true);
     if (validationErr) {
       setError(validationErr);
@@ -566,6 +669,13 @@ export default function BrandArticlesPage() {
             createRes.message || 'Không tạo được bản nháp trước khi xuất bản.',
           );
         }
+        setActiveArticle(created);
+        setEditorMode('edit');
+        setEtag(
+          created.etag ||
+            (created as unknown as { eTag?: string }).eTag ||
+            '',
+        );
         targetId = created.id;
         targetEtag =
           created.etag ||
@@ -613,7 +723,7 @@ export default function BrandArticlesPage() {
   };
 
   const handleUnpublish = async () => {
-    if (!activeArticle?.id) return;
+    if (busy || !activeArticle?.id) return;
     if (
       typeof window !== 'undefined' &&
       typeof window.confirm === 'function'
@@ -808,6 +918,8 @@ export default function BrandArticlesPage() {
               <option value="">Tất cả trạng thái</option>
               <option value="Draft">Bản nháp</option>
               <option value="Published">Đã xuất bản</option>
+              <option value="Scheduled">Đã lên lịch</option>
+              <option value="Expired">Đã hết hạn</option>
               <option value="Unpublished">Đã gỡ xuất bản</option>
             </select>
           </div>
@@ -890,14 +1002,26 @@ export default function BrandArticlesPage() {
                         {formatDateTime(item.updatedAt)}
                       </td>
                       <td className="py-3 pl-3 text-right">
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void openArticleForEdit(item.id)}
-                          className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                        >
-                          Chỉnh sửa
-                        </button>
+                        <div className="inline-flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void openArticleForEdit(item.id)}
+                            className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                          >
+                            Chỉnh sửa
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void handleDeleteArticle(item.id, item.title)}
+                            aria-label={`Xóa bài viết #${item.id}`}
+                            title="Xóa bài viết"
+                            className="inline-flex items-center rounded-lg border border-error-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-error-600 transition hover:bg-error-50 dark:border-error-500/30 dark:bg-gray-800 dark:text-error-400"
+                          >
+                            Xóa
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -962,6 +1086,21 @@ export default function BrandArticlesPage() {
                     className="inline-flex min-h-9 items-center justify-center rounded-xl border border-error-200 bg-white px-3.5 py-2 text-xs font-semibold text-error-600 transition hover:bg-error-50 disabled:opacity-50 dark:border-error-500/30 dark:bg-gray-800 dark:text-error-400"
                   >
                     Gỡ xuất bản
+                  </button>
+                )}
+                {activeArticle && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void handleDeleteArticle(
+                        activeArticle.id,
+                        activeArticle.draft.title || activeArticle.title,
+                      )
+                    }
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl border border-error-200 bg-white px-3.5 py-2 text-xs font-semibold text-error-600 transition hover:bg-error-50 disabled:opacity-50 dark:border-error-500/30 dark:bg-gray-800 dark:text-error-400"
+                  >
+                    Xóa bài viết
                   </button>
                 )}
               </div>
@@ -1077,6 +1216,54 @@ export default function BrandArticlesPage() {
               </div>
             </div>
 
+            {/* Schedule Section */}
+            <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                Thời gian hiển thị & Lên lịch ưu đãi (Tùy chọn)
+              </h3>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Thiết lập thời gian bài viết và banner liên kết tự động hiển thị hoặc tự động ẩn khi hết hạn.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Bắt đầu hiển thị từ
+                    <input
+                      type="datetime-local"
+                      value={startDate}
+                      disabled={busy}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        setDirty(true);
+                      }}
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-800"
+                    />
+                  </label>
+                  <span className="mt-0.5 block text-[11px] text-gray-400">
+                    Để trống nếu muốn hiển thị ngay khi xuất bản
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Hết hạn và tự động ẩn lúc
+                    <input
+                      type="datetime-local"
+                      value={endDate}
+                      disabled={busy}
+                      onChange={(e) => {
+                        setEndDate(e.target.value);
+                        setDirty(true);
+                      }}
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-800"
+                    />
+                  </label>
+                  <span className="mt-0.5 block text-[11px] text-gray-400">
+                    Sau thời điểm này, bài viết và banner trên Mobile sẽ tự ẩn
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Structured Blocks */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1134,7 +1321,33 @@ export default function BrandArticlesPage() {
                         <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
                           Khối #{idx + 1} — {blockTypeLabels[blk.type]}
                         </span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {blk.type === 'heading' && (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                handleChangeBlockType(blk.localId, 'paragraph')
+                              }
+                              title="Chuyển khối này thành Đoạn văn bản (giữ nguyên văn bản)"
+                              className="rounded-lg border border-brand-200 bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300"
+                            >
+                              ⇄ Chuyển thành Đoạn văn
+                            </button>
+                          )}
+                          {blk.type === 'paragraph' && (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                handleChangeBlockType(blk.localId, 'heading')
+                              }
+                              title="Chuyển khối này thành Tiêu đề đoạn (giữ nguyên văn bản)"
+                              className="rounded-lg border border-brand-200 bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300"
+                            >
+                              ⇄ Chuyển thành Tiêu đề
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={busy || idx === 0}
@@ -1166,10 +1379,9 @@ export default function BrandArticlesPage() {
                       </div>
 
                       {blk.type === 'heading' && (
-                        <div>
+                        <div className="space-y-1">
                           <input
                             type="text"
-                            maxLength={160}
                             value={blk.text}
                             disabled={busy}
                             onChange={(e) =>
@@ -1178,8 +1390,32 @@ export default function BrandArticlesPage() {
                               })
                             }
                             placeholder="Nhập tiêu đề đoạn (tối đa 160 ký tự)..."
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold dark:border-gray-700 dark:bg-gray-800"
+                            className={`w-full rounded-lg border px-3 py-2 text-xs font-semibold bg-white dark:bg-gray-800 ${
+                              blk.text.length > 160
+                                ? 'border-error-500 focus:border-error-500 focus:ring-error-500'
+                                : 'border-gray-300 dark:border-gray-700'
+                            }`}
                           />
+                          <div className="flex items-center justify-between text-[11px]">
+                            {blk.text.length > 160 ? (
+                              <span className="font-semibold text-error-600">
+                                ⚠️ Vượt quá {blk.text.length - 160} ký tự (tối đa 160). Hãy rút gọn hoặc bấm &ldquo;⇄ Chuyển thành Đoạn văn&rdquo; ở trên.
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">
+                                Tiêu đề đoạn nên ngắn gọn, súc tích
+                              </span>
+                            )}
+                            <span
+                              className={`font-mono ${
+                                blk.text.length > 160
+                                  ? 'font-bold text-error-600'
+                                  : 'text-gray-400'
+                              }`}
+                            >
+                              {blk.text.length}/160
+                            </span>
+                          </div>
                         </div>
                       )}
 
