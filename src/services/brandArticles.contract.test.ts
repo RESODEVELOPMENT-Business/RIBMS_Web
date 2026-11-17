@@ -6,8 +6,24 @@ const brandArticlesServiceSource = readFileSync(
   new URL('./brandArticles.ts', import.meta.url),
   'utf8',
 );
-const brandArticlesPageSource = readFileSync(
+const brandArticlesListPageSource = readFileSync(
   new URL('../app/(brand)/articles/page.tsx', import.meta.url),
+  'utf8',
+);
+const brandArticlesCreatePageSource = readFileSync(
+  new URL('../app/(brand)/articles/create/page.tsx', import.meta.url),
+  'utf8',
+);
+const brandArticlesEditPageSource = readFileSync(
+  new URL('../app/(brand)/articles/[id]/edit/page.tsx', import.meta.url),
+  'utf8',
+);
+const brandArticleEditorSource = readFileSync(
+  new URL('../app/(brand)/articles/_components/BrandArticleEditor.tsx', import.meta.url),
+  'utf8',
+);
+const articleSharedSource = readFileSync(
+  new URL('../app/(brand)/articles/_components/articleShared.tsx', import.meta.url),
   'utf8',
 );
 const navigationSource = readFileSync(
@@ -64,19 +80,28 @@ test('navigation registers /articles under BrandManager Danh mục & Tiếp th�
   );
 });
 
-test('articles admin page enforces BrandManager guard, supports heading/paragraph/image blocks, keyboard ↑/↓ reorder, 360px live preview, and 409 ETag & liveReferences handling without losing form edits', () => {
-  assert.match(brandArticlesPageSource, /user\.role !== 'BrandManager'/);
-  assert.match(brandArticlesPageSource, /Lưu nháp/);
-  assert.match(brandArticlesPageSource, /Xuất bản/);
-  assert.match(brandArticlesPageSource, /Gỡ xuất bản/);
-  assert.match(brandArticlesPageSource, /Xóa bài viết/);
-  assert.match(brandArticlesPageSource, /Chuyển thành Đoạn văn/);
-  assert.match(brandArticlesPageSource, /Chuyển thành Tiêu đề/);
-  assert.match(brandArticlesPageSource, /datetime-local/);
-  assert.match(brandArticlesPageSource, /Có bản nháp mới chưa xuất bản/);
-  assert.match(brandArticlesPageSource, /↑ Lên/);
-  assert.match(brandArticlesPageSource, /↓ Xuống/);
-  assert.match(brandArticlesPageSource, /max-w-\[360px\]/);
-  assert.match(brandArticlesPageSource, /Tải lại bản trên server/);
-  assert.match(brandArticlesPageSource, /liveReferences/);
+test('articles list page separates creation and editing into /articles/create and /articles/[id]/edit routes', () => {
+  assert.match(brandArticlesListPageSource, /user\.role !== 'BrandManager'/);
+  assert.match(brandArticlesListPageSource, /href="\/articles\/create"/);
+  assert.match(brandArticlesListPageSource, /href=\{`\/articles\/\$\{item\.id\}\/edit`\}/);
+  assert.doesNotMatch(brandArticlesListPageSource, /editorMode/);
+  assert.match(brandArticlesCreatePageSource, /<BrandArticleEditor mode="create" \/>/);
+  assert.match(brandArticlesEditPageSource, /<BrandArticleEditor mode="edit" articleId=\{parsedId\} \/>/);
+});
+
+test('articles editor enforces BrandManager guard, supports heading/paragraph/image blocks, keyboard ↑/↓ reorder, 360px live preview, and 409 ETag & liveReferences handling without losing form edits', () => {
+  assert.match(brandArticleEditorSource, /user\.role !== 'BrandManager'/);
+  assert.match(brandArticleEditorSource, /Lưu nháp/);
+  assert.match(brandArticleEditorSource, /Xuất bản/);
+  assert.match(brandArticleEditorSource, /Gỡ xuất bản/);
+  assert.match(brandArticleEditorSource, /Xóa bài viết/);
+  assert.match(brandArticleEditorSource, /Chuyển thành Đoạn văn/);
+  assert.match(brandArticleEditorSource, /Chuyển thành Tiêu đề/);
+  assert.match(brandArticleEditorSource, /datetime-local/);
+  assert.match(articleSharedSource, /Có bản nháp mới chưa xuất bản/);
+  assert.match(brandArticleEditorSource, /↑ Lên/);
+  assert.match(brandArticleEditorSource, /↓ Xuống/);
+  assert.match(brandArticleEditorSource, /max-w-\[360px\]/);
+  assert.match(articleSharedSource, /Tải lại bản trên server/);
+  assert.match(articleSharedSource, /liveReferences/);
 });
