@@ -8,6 +8,8 @@ export interface SalesRevenueSection {
   salesDiscount: number;
   totalDiscount: number;
   actualRevenue: number;
+  cardTopUpRevenue?: number;
+  cardTopUpInvoices?: number;
 }
 
 export interface InvoiceCountSection {
@@ -22,6 +24,16 @@ export interface PaymentMethodRevenue {
   paymentTypeName: string;
   amount: number;
   transactionCount: number;
+  isMember?: boolean;
+}
+
+export interface CardSettlementSection {
+  salesCashAmount: number;
+  topUpCashAmount: number;
+  topUpNonCashAmount: number;
+  topUpTotalAmount: number;
+  memberCreditSpentAmount: number;
+  totalCashToRemit: number;
 }
 
 export interface PeriodComparisonSection {
@@ -63,6 +75,7 @@ export interface SalesDashboardData {
   revenue: SalesRevenueSection;
   invoices: InvoiceCountSection;
   paymentMethodRevenues: PaymentMethodRevenue[];
+  cardSettlement?: CardSettlementSection | null;
   comparison?: PeriodComparisonSection | null;
   trend?: TrendSection | null;
   districtRevenues?: DistrictRevenueItem[] | null;
@@ -86,6 +99,12 @@ export interface StorePaymentMethodItem {
   storeId: number;
   storeName: string;
   paymentMethodRevenues: PaymentMethodRevenue[];
+  salesCashAmount?: number;
+  topUpCashAmount?: number;
+  topUpNonCashAmount?: number;
+  topUpTotalAmount?: number;
+  memberCreditSpentAmount?: number;
+  totalCashToRemit?: number;
 }
 
 // ── BC#2 Orders Report ───────────────────────────────────────────
@@ -680,12 +699,31 @@ export interface TopUpStoreItem {
   revenue: number;
   invoices: number;
   sharePercent: number;
+  salesCashAmount?: number;
+  salesNonCashAmount?: number;
+  salesMemberCreditAmount?: number;
+  topUpCashAmount?: number;
+  topUpNonCashAmount?: number;
+  topUpCashInvoices?: number;
+  topUpNonCashInvoices?: number;
+  totalCashToRemit?: number;
+  netSettlementDelta?: number;
 }
 
 export interface TopUpReportData {
   totalTopUpRevenue: number;
   totalTopUpInvoices: number;
   averageTopUpValue: number;
+  totalTopUpCashRevenue?: number;
+  totalTopUpNonCashRevenue?: number;
+  totalTopUpCashInvoices?: number;
+  totalTopUpNonCashInvoices?: number;
+  totalSalesCashRevenue?: number;
+  totalSalesNonCashRevenue?: number;
+  totalMemberCreditSpent?: number;
+  totalCashToRemit?: number;
+  netPeriodSettlementDelta?: number;
+  currentSystemLiabilityBalance?: number | null;
   dailyTrend: TopUpDailyTrendItem[];
   storeBreakdown: TopUpStoreItem[];
 }
@@ -704,4 +742,76 @@ export const getTopUpReport = async (
   if (toDate) params.append('toDate', toDate);
   appendStoreIds(params, storeIds);
   return await apiClient(`/orders/dashboard/top-up-report?${params.toString()}`);
+};
+
+
+// ===================== Member Card Ledger =====================
+
+export type MemberCardLedgerCategory = 'all' | 'topup' | 'spend' | 'topup_cancel' | 'order_refund';
+
+export interface MemberCardLedgerQueryParams {
+  storeId?: number | null;
+  storeIds?: number[] | null;
+  brandId?: number | null;
+  fromDate?: string;
+  toDate?: string;
+  cardCode?: string;
+  search?: string;
+  category?: MemberCardLedgerCategory;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface MemberCardLedgerSummary {
+  totalCount: number;
+  totalTopUpAmount: number;
+  totalSpendAmount: number;
+  totalTopUpCancelAmount: number;
+  totalOrderRefundAmount: number;
+  matchedCardCode?: string | null;
+  matchedCustomerName?: string | null;
+  matchedCustomerPhone?: string | null;
+  matchedCardCurrentBalance?: number | null;
+}
+
+export interface MemberCardLedgerItem {
+  transactionId: number;
+  date: string;
+  transactionCode?: string | null;
+  category: string;
+  transactionType: number;
+  isIncreaseTransaction: boolean;
+  amount: number;
+  signedAmount: number;
+  storeId: number;
+  storeName: string;
+  cardCode?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  accountCurrentBalance?: number | null;
+  notes?: string | null;
+}
+
+export interface MemberCardLedgerData {
+  summary: MemberCardLedgerSummary;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  items: MemberCardLedgerItem[];
+}
+
+export const getMemberCardLedger = async (query: MemberCardLedgerQueryParams) => {
+  const params = new URLSearchParams();
+  if (query.storeId) params.append('storeId', query.storeId.toString());
+  if (query.brandId) params.append('brandId', query.brandId.toString());
+  if (query.fromDate) params.append('fromDate', query.fromDate);
+  if (query.toDate) params.append('toDate', query.toDate);
+  if (query.cardCode?.trim()) params.append('cardCode', query.cardCode.trim());
+  if (query.search?.trim()) params.append('search', query.search.trim());
+  if (query.category && query.category !== 'all') params.append('category', query.category);
+  if (query.page) params.append('page', query.page.toString());
+  if (query.pageSize) params.append('pageSize', query.pageSize.toString());
+  appendStoreIds(params, query.storeIds);
+  return await apiClient(`/orders/dashboard/member-card-ledger?${params.toString()}`);
 };

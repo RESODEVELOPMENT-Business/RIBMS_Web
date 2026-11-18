@@ -53,6 +53,8 @@ export default function TopStoreRevenuesTable({ data }: { data: any[] }) {
               <th className="px-4 py-3 text-right font-semibold border-r border-[#009045]">DT trước giảm<br />giá</th>
               <th className="px-4 py-3 text-right font-semibold border-r border-[#009045]">Giảm giá</th>
               <th className="px-4 py-3 text-right font-semibold border-r border-[#009045]">Doanh thu sau<br />giảm</th>
+              <th className="px-4 py-3 text-right font-semibold border-r border-[#009045]">Bill nạp thẻ</th>
+              <th className="px-4 py-3 text-right font-semibold">DT nạp thẻ</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -66,11 +68,13 @@ export default function TopStoreRevenuesTable({ data }: { data: any[] }) {
                 <td className="px-4 py-2.5 text-right text-gray-600 border-r">{new Intl.NumberFormat('en-US').format(row.revenueBeforeDiscount)}</td>
                 <td className="px-4 py-2.5 text-right text-gray-600 border-r">{new Intl.NumberFormat('en-US').format(row.discount)}</td>
                 <td className="px-4 py-2.5 text-right text-gray-600 border-r">{new Intl.NumberFormat('en-US').format(row.revenueAfterDiscount)}</td>
+                <td className="px-4 py-2.5 text-right text-gray-600 border-r">{new Intl.NumberFormat('en-US').format(row.cardTopUpInvoices ?? 0)}</td>
+                <td className="px-4 py-2.5 text-right font-medium text-amber-700">{new Intl.NumberFormat('en-US').format(row.cardTopUpRevenue ?? 0)}</td>
               </tr>
             ))}
             {displayData.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-gray-500">Không tìm thấy dữ liệu</td>
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-500">Không tìm thấy dữ liệu</td>
               </tr>
             )}
           </tbody>

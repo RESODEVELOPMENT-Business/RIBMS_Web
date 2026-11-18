@@ -10,7 +10,9 @@ import {
   buildScopeHeaderRows,
   exportSheetsToExcel,
 } from '../utils/excelExport';
-import StorePaymentMethodsTable from '../components/StorePaymentMethodsTable';
+import StorePaymentMethodsTable, {
+  buildStorePaymentMethodsPivotAndDetailSheets,
+} from '../components/StorePaymentMethodsTable';
 
 export default function StorePaymentMethodsPage() {
   const filters = useDashboardFilters();
@@ -73,36 +75,6 @@ export default function StorePaymentMethodsPage() {
             .join(', ')
         : undefined;
 
-    // Build a wide table: store × all payment types
-    const allPaymentTypes = Array.from(
-      new Map(
-        storePaymentMethods
-          .flatMap((s) => s.paymentMethodRevenues)
-          .map((p) => [p.paymentType, p.paymentTypeName]),
-      ).entries(),
-    ).sort((a, b) => a[1].localeCompare(b[1]));
-
-    const rows = storePaymentMethods.map((s, idx) => {
-      const row: Record<string, any> = {
-        STT: idx + 1,
-        'Cửa hàng': s.storeName,
-      };
-      for (const [type, name] of allPaymentTypes) {
-        const pm = s.paymentMethodRevenues.find((x) => x.paymentType === type);
-        row[`${name} (VND)`] = pm?.amount ?? 0;
-      }
-      return row;
-    });
-
-    const detailRows = storePaymentMethods.flatMap((s) =>
-      s.paymentMethodRevenues.map((p) => ({
-        'Cửa hàng': s.storeName,
-        'Phương thức': p.paymentTypeName,
-        'Số giao dịch': p.transactionCount,
-        'Tổng tiền (VND)': p.amount,
-      })),
-    );
-
     exportSheetsToExcel('DoanhThu_PhuongThucThanhToan', [
       {
         name: 'Tổng quan',
@@ -114,8 +86,7 @@ export default function StorePaymentMethodsPage() {
         }),
         columnWidths: [22, 30],
       },
-      { name: 'Pivot', rows, columnWidths: [6, 30, ...allPaymentTypes.map(() => 18)] },
-      { name: 'Chi tiết', rows: detailRows, columnWidths: [30, 24, 14, 18] },
+      ...buildStorePaymentMethodsPivotAndDetailSheets(storePaymentMethods),
     ]);
   };
 

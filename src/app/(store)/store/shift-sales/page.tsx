@@ -9,6 +9,9 @@ import {
   PaymentMethodRevenue,
 } from '@/services/salesDashboard';
 import { DollarLineIcon, TaskIcon, PieChartIcon } from '@/icons';
+import CardSettlementSummaryCard, {
+  isMemberPaymentMethod,
+} from '@/components/sales-dashboard/CardSettlementSummaryCard';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -204,6 +207,8 @@ function PaymentMethodsCard({ paymentMethods }: { paymentMethods: PaymentMethodR
           {paymentMethods.map((pm, idx) => {
             const percent = totalPaymentSum > 0 ? (pm.amount / totalPaymentSum) * 100 : 0;
             const gradient = gradients[idx % gradients.length];
+            const isMember = isMemberPaymentMethod(pm);
+            const clampedWidth = Math.min(100, Math.max(0, percent));
             return (
               <div
                 key={pm.paymentType}
@@ -211,15 +216,22 @@ function PaymentMethodsCard({ paymentMethods }: { paymentMethods: PaymentMethodR
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <span className="text-sm font-bold text-gray-800 dark:text-white block">
-                      {pm.paymentTypeName}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-gray-800 dark:text-white">
+                        {pm.paymentTypeName}
+                      </span>
+                      {isMember && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+                          Cty bù trả CH
+                        </span>
+                      )}
+                    </div>
                     <span className="text-xs text-gray-400 dark:text-gray-500">
                       {pm.transactionCount} giao dịch
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-bold text-gray-800 dark:text-white block">
+                    <span className="text-sm font-bold text-gray-800 dark:text-white block tabular-nums">
                       {formatVND(pm.amount)}
                     </span>
                     <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
@@ -230,7 +242,7 @@ function PaymentMethodsCard({ paymentMethods }: { paymentMethods: PaymentMethodR
                 <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
                   <div
                     className={`bg-gradient-to-r ${gradient} h-full rounded-full transition-all duration-500`}
-                    style={{ width: `${percent}%` }}
+                    style={{ width: `${clampedWidth}%` }}
                   />
                 </div>
               </div>
@@ -312,6 +324,11 @@ export default function ShiftSalesDashboardPage() {
             />
           </div>
           <PaymentMethodsCard paymentMethods={dashboardData.paymentMethodRevenues} />
+          <CardSettlementSummaryCard
+            settlement={dashboardData.cardSettlement}
+            cardTopUpInvoices={dashboardData.revenue.cardTopUpInvoices}
+            isShiftView
+          />
         </div>
       )}
     </div>

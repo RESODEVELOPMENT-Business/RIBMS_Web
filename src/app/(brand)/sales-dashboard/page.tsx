@@ -17,6 +17,9 @@ import DashboardFilters from './components/DashboardFilters';
 import TrendGranularitySelector from './components/TrendGranularitySelector';
 import TrendChart from './components/TrendChart';
 import ExportExcelButton from './components/ExportExcelButton';
+import CardSettlementSummaryCard, {
+  isMemberPaymentMethod,
+} from '@/components/sales-dashboard/CardSettlementSummaryCard';
 import { useDashboardFilters } from './hooks/useDashboardFilters';
 import {
   buildScopeHeaderRows,
@@ -102,6 +105,17 @@ export default function SalesDashboardPage() {
       { 'Chỉ số': 'Tại quán', 'Giá trị': dashboardData.invoices.atStore },
       { 'Chỉ số': 'Mang đi', 'Giá trị': dashboardData.invoices.takeAway },
       { 'Chỉ số': 'Giao hàng', 'Giá trị': dashboardData.invoices.delivery },
+      ...(dashboardData.cardSettlement
+        ? [
+            { 'Chỉ số': 'Tiền mặt bán hàng', 'Giá trị (VND)': dashboardData.cardSettlement.salesCashAmount },
+            { 'Chỉ số': 'Thu hộ nạp thẻ - Tiền mặt', 'Giá trị (VND)': dashboardData.cardSettlement.topUpCashAmount },
+            { 'Chỉ số': 'Thu hộ nạp thẻ - CK/Khác', 'Giá trị (VND)': dashboardData.cardSettlement.topUpNonCashAmount },
+            { 'Chỉ số': 'Tổng thu hộ nạp thẻ', 'Giá trị (VND)': dashboardData.cardSettlement.topUpTotalAmount },
+            { 'Chỉ số': 'Số bill nạp thẻ', 'Giá trị': dashboardData.revenue.cardTopUpInvoices ?? 0 },
+            { 'Chỉ số': 'Tổng tiền mặt phải nộp', 'Giá trị (VND)': dashboardData.cardSettlement.totalCashToRemit },
+            { 'Chỉ số': 'Tiêu Thẻ TV (Cty bù trả CH)', 'Giá trị (VND)': dashboardData.cardSettlement.memberCreditSpentAmount },
+          ]
+        : []),
     ] as Record<string, any>[];
 
     const paymentRows = dashboardData.paymentMethodRevenues.map((pm) => ({
@@ -241,6 +255,16 @@ export default function SalesDashboardPage() {
                       {formatVND(dashboardData.revenue.actualRevenue)}
                     </span>
                   </div>
+                  {(dashboardData.revenue.cardTopUpRevenue ?? 0) > 0 && (
+                    <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-100 dark:border-gray-800/80 text-xs">
+                      <span className="text-amber-700 dark:text-amber-400">
+                        Thu hộ nạp thẻ ({dashboardData.revenue.cardTopUpInvoices ?? 0} bill — không tính DT)
+                      </span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
+                        {formatVND(dashboardData.revenue.cardTopUpRevenue ?? 0)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -294,10 +318,10 @@ export default function SalesDashboardPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-                    Tổng doanh thu theo phương thức thanh toán
+                    Doanh thu bán hàng theo phương thức thanh toán
                   </h2>
                   <p className="text-xs text-gray-400 dark:text-gray-500">
-                    Phân phối nguồn tiền thực tế đổ về hệ thống
+                    Chỉ tính đơn bán hàng (đã tách riêng tiền nạp thẻ thu hộ)
                   </p>
                 </div>
               </div>
@@ -328,20 +352,29 @@ export default function SalesDashboardPage() {
                       'from-purple-500 to-violet-500',
                     ];
                     const gradient = gradients[idx % gradients.length];
+                    const isMember = isMemberPaymentMethod(pm);
+                    const clampedWidth = Math.min(100, Math.max(0, percent));
                     return (
                       <div key={pm.paymentType}
                         className="p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60 flex flex-col justify-between hover:shadow-md transition-all duration-300">
                         <div className="flex justify-between items-start mb-3">
                           <div>
-                            <span className="text-sm font-bold text-gray-800 dark:text-white block">
-                              {pm.paymentTypeName}
-                            </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-bold text-gray-800 dark:text-white">
+                                {pm.paymentTypeName}
+                              </span>
+                              {isMember && (
+                                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+                                  Cty bù trả CH
+                                </span>
+                              )}
+                            </div>
                             <span className="text-xs text-gray-400 dark:text-gray-500">
                               {pm.transactionCount} giao dịch
                             </span>
                           </div>
                           <div className="text-right">
-                            <span className="text-sm font-bold text-gray-800 dark:text-white block">
+                            <span className="text-sm font-bold text-gray-800 dark:text-white block tabular-nums">
                               {formatVND(pm.amount)}
                             </span>
                             <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
@@ -351,7 +384,7 @@ export default function SalesDashboardPage() {
                         </div>
                         <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 overflow-hidden">
                           <div className={`bg-gradient-to-r ${gradient} h-full rounded-full transition-all duration-500`}
-                            style={{ width: `${percent}%` }} />
+                            style={{ width: `${clampedWidth}%` }} />
                         </div>
                       </div>
                     );
@@ -360,6 +393,11 @@ export default function SalesDashboardPage() {
               </div>
             )}
           </div>
+
+          <CardSettlementSummaryCard
+            settlement={dashboardData.cardSettlement}
+            cardTopUpInvoices={dashboardData.revenue.cardTopUpInvoices}
+          />
 
           {/* Trend chart */}
           {dashboardData.trend && dashboardData.trend.buckets.length > 0 && (
