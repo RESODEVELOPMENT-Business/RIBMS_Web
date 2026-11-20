@@ -7,28 +7,9 @@ export const CONDITION_TYPE_LABELS: Record<number, string> = {
   3: 'Min Quantity',
 };
 
-export const REWARD_TYPE_LABELS: Record<number, string> = {
-  0: 'Free Product',
-  1: 'Discount',
-  2: 'Voucher Code',
-};
-
 export interface CreateConditionData {
   conditionType: number;
   value: string;
-}
-
-export interface CreateRewardTierData {
-  stampRequired: number;
-  rewardType: number;
-  rewardValue?: string;
-  rewardDescription: string;
-  brandLoyaltyTierId?: number | null;
-  productId?: number | null;
-  productItemId?: number | null;
-  quantity?: number;
-  active?: boolean;
-  sortOrder?: number;
 }
 
 export interface CreateStampProgramData {
@@ -41,7 +22,18 @@ export interface CreateStampProgramData {
   conditionLogic: string;
   storeIds: number[];
   conditions: CreateConditionData[];
-  rewardTiers: CreateRewardTierData[];
+}
+
+export interface SharedStampRewardUpsertData {
+  rewardType: number;
+  productId?: number | null;
+  productItemId?: number | null;
+  quantity: number;
+}
+
+export interface SharedStampReward extends SharedStampRewardUpsertData {
+  id: number;
+  rewardDescription?: string;
 }
 
 export interface StampRewardOption {
@@ -83,6 +75,21 @@ export const getStampPrograms = async (page = 1, size = 20, isActive?: boolean) 
 
 export const getStampProgramById = async (id: number) => {
   return await apiClient(`/admin/stamp-programs/${id}`);
+};
+
+export const getEffectiveStampProgram = async () => {
+  return await apiClient('/admin/stamp-programs/effective');
+};
+
+export const getSharedStampReward = async (id: number) => {
+  return await apiClient(`/admin/stamp-programs/${id}/shared-reward`);
+};
+
+export const updateSharedStampReward = async (id: number, data: SharedStampRewardUpsertData) => {
+  return await apiClient(`/admin/stamp-programs/${id}/shared-reward`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 };
 
 export const createStampProgram = async (data: CreateStampProgramData) => {

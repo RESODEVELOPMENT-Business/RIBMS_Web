@@ -7,9 +7,7 @@ import {
   updateStampProgram,
   deleteStampProgram,
   CONDITION_TYPE_LABELS,
-  REWARD_TYPE_LABELS,
   CreateConditionData,
-  CreateRewardTierData,
 } from '@/services/stampPrograms';
 import { getStores } from '@/services/stores';
 import { getProducts } from '@/services/products';
@@ -40,8 +38,7 @@ export default function StampProgramDetailPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
   const [conditions, setConditions] = useState<CreateConditionData[]>([]);
-  const [rewardTiers, setRewardTiers] = useState<CreateRewardTierData[]>([]);
-  const [showProductPicker, setShowProductPicker] = useState<{ target: 'condition' | 'tier'; index: number } | null>(null);
+  const [showProductPicker, setShowProductPicker] = useState<{ index: number } | null>(null);
   const [productSearch, setProductSearch] = useState('');
 
   useEffect(() => {
@@ -79,14 +76,6 @@ export default function StampProgramDetailPage() {
           (res.data.conditions || []).map((c: any) => ({
             conditionType: typeof c.conditionType === 'string' ? Number(c.conditionType) : c.conditionType,
             value: c.value,
-          }))
-        );
-        setRewardTiers(
-          (res.data.rewardTiers || []).map((t: any) => ({
-            stampRequired: t.stampRequired,
-            rewardType: typeof t.rewardType === 'string' ? Number(t.rewardType) : t.rewardType,
-            rewardValue: t.rewardValue || '',
-            rewardDescription: t.rewardDescription,
           }))
         );
       }
@@ -135,15 +124,9 @@ export default function StampProgramDetailPage() {
   const updateCondition = (i: number, field: string, val: any) =>
     setConditions(p => p.map((c, idx) => (idx === i ? { ...c, [field]: val } : c)));
 
-  const addTier = () =>
-    setRewardTiers(p => [...p, { stampRequired: 5, rewardType: 0, rewardValue: '', rewardDescription: '' }]);
-  const removeTier = (i: number) => setRewardTiers(p => p.filter((_, idx) => idx !== i));
-  const updateTier = (i: number, field: string, val: any) =>
-    setRewardTiers(p => p.map((t, idx) => (idx === i ? { ...t, [field]: val } : t)));
-
   const handleSelectProduct = (product: any) => {
     if (!showProductPicker) return;
-    const { target, index } = showProductPicker;
+    const { index } = showProductPicker;
     const codes: string[] = [product.code];
     if (product.generalProductId === null || product.generalProductId === undefined) {
       const parent = productGroups.find(
@@ -152,8 +135,7 @@ export default function StampProgramDetailPage() {
       if (parent) parent.children.forEach((c: any) => { if (c.code) codes.push(c.code); });
     }
     const value = [...new Set(codes)].filter(Boolean).join(',');
-    if (target === 'condition') updateCondition(index, 'value', value);
-    else updateTier(index, 'rewardValue', value);
+    updateCondition(index, 'value', value);
     setShowProductPicker(null);
     setProductSearch('');
   };
@@ -179,12 +161,6 @@ export default function StampProgramDetailPage() {
       setSubmitting(false);
       return;
     }
-    if (rewardTiers.some(t => !t.rewardDescription.trim())) {
-      toast.error('Please fill in all reward descriptions');
-      setSubmitting(false);
-      return;
-    }
-
     try {
       const res = await updateStampProgram(id, {
         displayName: fd.get('displayName') as string,
@@ -199,7 +175,6 @@ export default function StampProgramDetailPage() {
         isActive: fd.get('isActive') === 'on',
         storeIds: selectedStoreIds,
         conditions,
-        rewardTiers,
       });
       if (res?.status === 200) {
         toast.success('Updated successfully');
@@ -298,21 +273,6 @@ export default function StampProgramDetailPage() {
                     </div>
                   );
                 })}
-              </div>
-            </div>
-          )}
-          {program.rewardTiers?.length > 0 && (
-            <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
-              <h3 className={sectionTitleCls}>Reward Tiers</h3>
-              <div className="space-y-1">
-                {program.rewardTiers.map((t: any, i: number) => (
-                  <div
-                    key={i}
-                    className="rounded-lg bg-green-50 px-3 py-2 text-sm dark:bg-green-900/20"
-                  >
-                    {t.stampRequired} stamps → {t.rewardDescription}
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -419,7 +379,7 @@ export default function StampProgramDetailPage() {
                     {c.conditionType === 0 ? (
                       <button
                         type="button"
-                        onClick={() => setShowProductPicker({ target: 'condition', index: i })}
+                        onClick={() => setShowProductPicker({ index: i })}
                         className={`${inputCls} flex items-center gap-2 text-left truncate ${
                           c.value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'
                         }`}
@@ -468,99 +428,6 @@ export default function StampProgramDetailPage() {
                       Remove
                     </button>
                   )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Reward Tiers */}
-          <div className={sectionCls}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Reward Tiers</h2>
-              <button
-                type="button"
-                onClick={addTier}
-                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
-              >
-                + Add
-              </button>
-            </div>
-            <div className="space-y-3">
-              {rewardTiers.map((t, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-500">Tier #{i + 1}</span>
-                    {rewardTiers.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeTier(i)}
-                        className="text-xs text-red-400 hover:text-red-600"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-4 gap-3">
-                    <div>
-                      <label className={labelCls}>Stamps Required</label>
-                      <input
-                        type="number"
-                        value={t.stampRequired}
-                        onChange={e => updateTier(i, 'stampRequired', Number(e.target.value))}
-                        className={inputCls}
-                        min={1}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Reward Type</label>
-                      <select
-                        value={t.rewardType}
-                        onChange={e => updateTier(i, 'rewardType', Number(e.target.value))}
-                        className={selectCls}
-                      >
-                        {Object.entries(REWARD_TYPE_LABELS).map(([k, v]) => (
-                          <option key={k} value={k}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Reward Value</label>
-                      {t.rewardType === 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowProductPicker({ target: 'tier', index: i })}
-                          className={`${inputCls} flex items-center gap-2 text-left truncate ${
-                            t.rewardValue ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'
-                          }`}
-                        >
-                          {t.rewardValue
-                            ? t.rewardValue.split(',').map(code => productName(code)).join(', ')
-                            : 'Select product...'}
-                        </button>
-                      ) : (
-                        <input
-                          value={t.rewardValue || ''}
-                          onChange={e => updateTier(i, 'rewardValue', e.target.value)}
-                          className={inputCls}
-                          placeholder="Amount / voucher code"
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <label className={labelCls}>Description</label>
-                      <input
-                        value={t.rewardDescription}
-                        onChange={e => updateTier(i, 'rewardDescription', e.target.value)}
-                        className={inputCls}
-                        placeholder="e.g. Free hat"
-                      />
-                    </div>
-                  </div>
                 </div>
               ))}
             </div>
@@ -652,10 +519,7 @@ export default function StampProgramDetailPage() {
                     type="button"
                     onClick={() => handleSelectProduct(group)}
                     className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-brand-50 dark:hover:bg-brand-900/20 ${
-                      (showProductPicker.target === 'condition'
-                        ? conditions[showProductPicker.index]?.value
-                        : rewardTiers[showProductPicker.index]?.rewardValue
-                      )?.includes(group.code)
+                      conditions[showProductPicker.index]?.value?.includes(group.code)
                         ? 'bg-brand-50 dark:bg-brand-900/30'
                         : ''
                     }`}
@@ -672,10 +536,7 @@ export default function StampProgramDetailPage() {
                               handleSelectProduct(child);
                             }}
                             className={`ml-3 block w-full rounded px-2 py-1 text-left text-xs transition-colors hover:bg-brand-50/50 dark:hover:bg-brand-900/10 ${
-                              (showProductPicker.target === 'condition'
-                                ? conditions[showProductPicker.index]?.value
-                                : rewardTiers[showProductPicker.index]?.rewardValue
-                              )?.includes(child.code)
+                              conditions[showProductPicker.index]?.value?.includes(child.code)
                                 ? 'text-brand-700 dark:text-brand-400'
                                 : 'text-gray-500 dark:text-gray-400'
                             }`}

@@ -31,6 +31,8 @@ export interface CardSettlementSection {
   salesCashAmount: number;
   topUpCashAmount: number;
   topUpNonCashAmount: number;
+  topUpUnclassifiedAmount?: number;
+  topUpUnclassifiedInvoices?: number;
   topUpTotalAmount: number;
   memberCreditSpentAmount: number;
   totalCashToRemit: number;
@@ -102,6 +104,7 @@ export interface StorePaymentMethodItem {
   salesCashAmount?: number;
   topUpCashAmount?: number;
   topUpNonCashAmount?: number;
+  topUpUnclassifiedAmount?: number;
   topUpTotalAmount?: number;
   memberCreditSpentAmount?: number;
   totalCashToRemit?: number;
@@ -704,8 +707,10 @@ export interface TopUpStoreItem {
   salesMemberCreditAmount?: number;
   topUpCashAmount?: number;
   topUpNonCashAmount?: number;
+  topUpUnclassifiedAmount?: number;
   topUpCashInvoices?: number;
   topUpNonCashInvoices?: number;
+  topUpUnclassifiedInvoices?: number;
   totalCashToRemit?: number;
   netSettlementDelta?: number;
 }
@@ -716,8 +721,10 @@ export interface TopUpReportData {
   averageTopUpValue: number;
   totalTopUpCashRevenue?: number;
   totalTopUpNonCashRevenue?: number;
+  totalTopUpUnclassifiedRevenue?: number;
   totalTopUpCashInvoices?: number;
   totalTopUpNonCashInvoices?: number;
+  totalTopUpUnclassifiedInvoices?: number;
   totalSalesCashRevenue?: number;
   totalSalesNonCashRevenue?: number;
   totalMemberCreditSpent?: number;
@@ -815,3 +822,5 @@ export const getMemberCardLedger = async (query: MemberCardLedgerQueryParams) =>
   appendStoreIds(params, query.storeIds);
   return await apiClient(`/orders/dashboard/member-card-ledger?${params.toString()}`);
 };
+
+

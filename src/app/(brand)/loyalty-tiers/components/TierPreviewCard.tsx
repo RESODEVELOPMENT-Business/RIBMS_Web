@@ -76,11 +76,8 @@ export function TierPreviewCard({
 }: TierPreviewCardProps) {
   const theme = getTierTheme(tier.tierName, tier.sortOrder);
 
-  const effectiveVoucherCount = policy
-    ? policy.active
-      ? policy.monthlyCount
-      : 0
-    : tier.monthlyVoucherCount;
+  const hasActivePolicy = Boolean(policy && policy.active && policy.rules.length > 0);
+  const effectiveVoucherCount = hasActivePolicy ? policy!.monthlyCount : 0;
 
   return (
     <div className="group flex flex-col rounded-xl border border-gray-200 bg-white shadow-theme-sm transition-all duration-200 hover:shadow-theme-md dark:border-gray-800 dark:bg-gray-800 overflow-hidden">

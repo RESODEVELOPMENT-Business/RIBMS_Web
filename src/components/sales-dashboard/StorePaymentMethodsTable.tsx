@@ -28,6 +28,10 @@ export function buildStorePaymentMethodsPivotAndDetailSheets(
     ).entries(),
   ).sort((a, b) => a[1].localeCompare(b[1]));
 
+  const hasAnyUnclassified = storePaymentMethods.some(
+    (s) => (s.topUpUnclassifiedAmount ?? 0) > 0,
+  );
+
   const rows = storePaymentMethods.map((s, idx) => {
     const row: Record<string, any> = {
       STT: idx + 1,
@@ -39,6 +43,9 @@ export function buildStorePaymentMethodsPivotAndDetailSheets(
     }
     row['TM Nạp thẻ (VND)'] = s.topUpCashAmount ?? 0;
     row['CK/Khác Nạp thẻ (VND)'] = s.topUpNonCashAmount ?? 0;
+    if (hasAnyUnclassified) {
+      row['Nạp thiếu PTTT (VND)'] = s.topUpUnclassifiedAmount ?? 0;
+    }
     row['Tổng Nạp thẻ (VND)'] = s.topUpTotalAmount ?? 0;
     row['Tổng TM phải nộp (VND)'] = s.totalCashToRemit ?? 0;
     return row;
@@ -82,7 +89,16 @@ export function buildStorePaymentMethodsPivotAndDetailSheets(
     {
       name: 'Pivot',
       rows,
-      columnWidths: [6, 30, ...allPaymentTypes.map(() => 18), 18, 18, 18, 20],
+      columnWidths: [
+        6,
+        30,
+        ...allPaymentTypes.map(() => 18),
+        18,
+        18,
+        ...(hasAnyUnclassified ? [18] : []),
+        18,
+        20,
+      ],
     },
     {
       name: 'Chi tiết',

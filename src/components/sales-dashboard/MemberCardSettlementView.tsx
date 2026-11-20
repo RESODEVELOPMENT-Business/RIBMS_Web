@@ -53,6 +53,14 @@ export function buildTopUpReportExcelSheets(params: {
     { 'Chỉ tiêu': 'Thực thu nạp thẻ (VND)', 'Giá trị': report.totalTopUpRevenue ?? 0 },
     { 'Chỉ tiêu': '  - Tiền mặt nạp thẻ (VND)', 'Giá trị': report.totalTopUpCashRevenue ?? 0 },
     { 'Chỉ tiêu': '  - CK / Khác nạp thẻ (VND)', 'Giá trị': report.totalTopUpNonCashRevenue ?? 0 },
+    ...((report.totalTopUpUnclassifiedInvoices ?? 0) > 0
+      ? [
+          {
+            'Chỉ tiêu': '  - Thiếu dữ liệu PTTT (VND)',
+            'Giá trị': report.totalTopUpUnclassifiedRevenue ?? 0,
+          },
+        ]
+      : []),
     { 'Chỉ tiêu': 'Số giao dịch nạp hợp lệ', 'Giá trị': report.totalTopUpInvoices ?? 0 },
     { 'Chỉ tiêu': 'Tiền mặt bán hàng (VND)', 'Giá trị': report.totalSalesCashRevenue ?? 0 },
     { 'Chỉ tiêu': 'Tổng tiền mặt phải nộp công ty (VND)', 'Giá trị': report.totalCashToRemit ?? 0 },
@@ -119,6 +127,8 @@ export default function MemberCardSettlementView({
   const [activeTab, setActiveTab] = useState<'settlement' | 'ledger'>('settlement');
   const [storeSearch, setStoreSearch] = useState('');
   const [drilldownStoreId, setDrilldownStoreId] = useState<number | null>(null);
+  const isStoreView = scope === 'store';
+  const storeId = lockedStoreId ?? null;
 
   const formatVnd = (n: number | null | undefined) =>
     new Intl.NumberFormat('vi-VN').format(n ?? 0);
@@ -225,6 +235,19 @@ export default function MemberCardSettlementView({
         </div>
       ) : (
         <div className="space-y-6">
+          {(report.totalTopUpUnclassifiedInvoices ?? 0) > 0 && (
+            <div className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between gap-2">
+              <span>
+                Cảnh báo: Có{' '}
+                <strong>{report.totalTopUpUnclassifiedInvoices}</strong> đơn nạp
+                thẻ thiếu dữ liệu Payment — không tự xếp vào CK/Khác để tránh
+                sai lệch tiền mặt phải nộp.
+              </span>
+              <strong className="tabular-nums whitespace-nowrap">
+                {formatVnd(report.totalTopUpUnclassifiedRevenue ?? 0)}₫
+              </strong>
+            </div>
+          )}
           {/* KPI Summary Cards */}
           <div
             className={`grid grid-cols-1 md:grid-cols-2 ${

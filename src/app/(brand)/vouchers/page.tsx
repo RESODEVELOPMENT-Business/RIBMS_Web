@@ -538,6 +538,14 @@ export default function VouchersPage() {
       header: 'Ưu đãi',
       cell: ({ row }) => {
         const item = row.original;
+        if (item.rewardType === 4) {
+          return (
+            <div>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">Một ly miễn phí</span>
+              {item.productName && <div className="text-xs text-gray-500">{item.productName}</div>}
+            </div>
+          );
+        }
         if (item.rewardType === 1) {
           return (
             <div>
@@ -809,6 +817,7 @@ export default function VouchersPage() {
               <option value="all">Tất cả loại ưu đãi</option>
               <option value="1">Giảm phần trăm (%)</option>
               <option value="2">Giảm số tiền (VNĐ)</option>
+              <option value="4">Một ly miễn phí</option>
             </select>
           </div>
         </div>

@@ -15,11 +15,12 @@ import {
   uploadTierImage,
 } from '@/services/loyaltyTiers';
 import { getLoyaltyRewardPolicies, type LoyaltyRewardPolicy } from '@/services/loyaltyRewards';
-import { getBrandProducts } from '@/services/loyaltyProducts';
+import { getBrandProductItems, getBrandProducts } from '@/services/loyaltyProducts';
 import { optimizeImageForUpload } from '@/services/imageOptimizer';
 import { RewardPolicyEditor } from './components/RewardPolicyEditor';
 import { TierPreviewCard } from './components/TierPreviewCard';
 import { TierImageEditor } from './components/TierImageEditor';
+import { StampRewardOptionEditor } from './components/StampRewardOptionEditor';
 import type { LoyaltyProductOption } from '@/services/loyaltyProductContracts';
 import {
   CheckLineIcon,
@@ -211,6 +212,7 @@ export default function LoyaltyTiersPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [policies, setPolicies] = useState<LoyaltyRewardPolicy[]>([]);
   const [products, setProducts] = useState<LoyaltyProductOption[]>([]);
+  const [productItems, setProductItems] = useState<LoyaltyProductOption[]>([]);
   const [loadingConfiguration, setLoadingConfiguration] = useState(true);
   const [configurationError, setConfigurationError] = useState('');
 
@@ -237,15 +239,17 @@ export default function LoyaltyTiersPage() {
     if (!brandId) {
       setPolicies([]);
       setProducts([]);
+      setProductItems([]);
       setLoadingConfiguration(false);
       return;
     }
 
     setLoadingConfiguration(true);
     setConfigurationError('');
-    const [policyResult, productResult] = await Promise.allSettled([
+    const [policyResult, productResult, productItemResult] = await Promise.allSettled([
       getLoyaltyRewardPolicies(),
       getBrandProducts(),
+      getBrandProductItems(),
     ]);
     const errors: string[] = [];
 
@@ -257,6 +261,9 @@ export default function LoyaltyTiersPage() {
     if (productResult.status === 'fulfilled')
       setProducts(productResult.value);
     else errors.push('Không thể tải sản phẩm của thương hiệu.');
+    if (productItemResult.status === 'fulfilled')
+      setProductItems(productItemResult.value);
+    else errors.push('Không thể tải quà vật lý của thương hiệu.');
 
     setConfigurationError(errors.join(' '));
     setLoadingConfiguration(false);
@@ -864,6 +871,12 @@ export default function LoyaltyTiersPage() {
           </div>
         )}
       </section>
+
+      <StampRewardOptionEditor
+        products={products}
+        productItems={productItems}
+        loadingProducts={loadingConfiguration}
+      />
 
       {/* 5. REFINED TIER MODAL (DESIGN.md ROUNDED-3XL & GROUPED LOGIC) */}
       <Modal

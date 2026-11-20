@@ -1,5 +1,27 @@
 import { apiClient } from './apiClient';
 
+export interface TierBenefitRuleDraftPayload {
+  rewardType: number;
+  productId?: number | null;
+  productItemId?: number | null;
+  percentageBasisPoints?: number | null;
+  amount?: number | null;
+  quantity?: number | null;
+  minOrderAmount?: number | null;
+  displayOrder?: number;
+}
+
+export interface TierBenefitDraftPayload {
+  trigger: 1 | 2 | 3;
+  enabled: boolean;
+  policyId?: number | null;
+  policyCode?: string | null;
+  monthlyCount?: number;
+  validityDays?: number;
+  minOrderAmount?: number;
+  rules?: TierBenefitRuleDraftPayload[];
+}
+
 export interface BrandLoyaltyTier {
   id: number;
   brandId: number;
@@ -13,6 +35,7 @@ export interface BrandLoyaltyTier {
   monthlyVoucherCount: number;
   birthdayReward?: string | null;
   upgradeRewardDescription?: string | null;
+  benefitRevision?: number;
   sortOrder: number;
   active: boolean;
   createdAt?: string;
@@ -29,6 +52,8 @@ export interface BrandLoyaltyTierPayload {
   monthlyVoucherCount: number;
   birthdayReward?: string | null;
   upgradeRewardDescription?: string | null;
+  expectedBenefitRevision?: number;
+  benefits?: TierBenefitDraftPayload[];
   sortOrder: number;
   active: boolean;
 }

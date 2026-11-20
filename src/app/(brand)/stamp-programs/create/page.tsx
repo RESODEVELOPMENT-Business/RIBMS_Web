@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { createStampProgram, CONDITION_TYPE_LABELS, REWARD_TYPE_LABELS, CreateConditionData, CreateRewardTierData } from '@/services/stampPrograms';
+import { createStampProgram, CONDITION_TYPE_LABELS, CreateConditionData } from '@/services/stampPrograms';
 import { getStores } from '@/services/stores';
 import { getProducts } from '@/services/products';
 import { getProductCategories } from '@/services/productCategories';
@@ -20,11 +20,10 @@ export default function CreateStampProgramPage() {
   const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [showProductPicker, setShowProductPicker] = useState<{ target: 'condition' | 'tier'; index: number } | null>(null);
+  const [showProductPicker, setShowProductPicker] = useState<{ index: number } | null>(null);
   const [productSearch, setProductSearch] = useState('');
 
   const [conditions, setConditions] = useState<CreateConditionData[]>([{ conditionType: 0, value: '' }]);
-  const [rewardTiers, setRewardTiers] = useState<CreateRewardTierData[]>([{ stampRequired: 5, rewardType: 0, rewardValue: '', rewardDescription: '' }]);
 
   useEffect(() => {
     const brandId = useAuthStore.getState().user?.brandId;
@@ -65,15 +64,11 @@ export default function CreateStampProgramPage() {
   const removeCondition = (i: number) => setConditions(p => p.filter((_, idx) => idx !== i));
   const updateCondition = (i: number, field: string, val: any) => setConditions(p => p.map((c, idx) => idx === i ? { ...c, [field]: val } : c));
 
-  const addTier = () => setRewardTiers(p => [...p, { stampRequired: 5, rewardType: 0, rewardValue: '', rewardDescription: '' }]);
-  const removeTier = (i: number) => setRewardTiers(p => p.filter((_, idx) => idx !== i));
-  const updateTier = (i: number, field: string, val: any) => setRewardTiers(p => p.map((t, idx) => idx === i ? { ...t, [field]: val } : t));
-
   const toggleStore = (id: number) => setSelectedStoreIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
   const handleSelectProduct = (product: any) => {
     if (!showProductPicker) return;
-    const { target, index } = showProductPicker;
+    const { index } = showProductPicker;
     const codes: string[] = [product.code];
     // If parent selected, include all children's codes
     if (product.generalProductId === null || product.generalProductId === undefined) {
@@ -83,11 +78,7 @@ export default function CreateStampProgramPage() {
       }
     }
     const value = [...new Set(codes)].filter(Boolean).join(',');
-    if (target === 'condition') {
-      updateCondition(index, 'value', value);
-    } else {
-      updateTier(index, 'rewardValue', value);
-    }
+    updateCondition(index, 'value', value);
     setShowProductPicker(null);
     setProductSearch('');
   };
@@ -108,7 +99,6 @@ export default function CreateStampProgramPage() {
         conditionLogic: fd.get('conditionLogic') as string || 'AND',
         storeIds: selectedStoreIds,
         conditions,
-        rewardTiers,
       });
       if (res?.status === 201 || res?.status === 200) {
         toast.success('Created successfully');
@@ -178,7 +168,7 @@ export default function CreateStampProgramPage() {
                 <div className="flex-[2]">
                   <label className={labelCls}>Value</label>
                   {c.conditionType === 0 ? (
-                    <button type="button" onClick={() => setShowProductPicker({ target: 'condition', index: i })}
+                    <button type="button" onClick={() => setShowProductPicker({ index: i })}
                       className={`${inputCls} flex items-center gap-2 text-left truncate ${c.value ? 'text-gray-900' : 'text-gray-400'}`}>
                       {c.value ? c.value.split(',').map(code => productName(code)).join(', ') : 'Select products...'}
                     </button>
@@ -202,51 +192,6 @@ export default function CreateStampProgramPage() {
                   )}
                 </div>
                 {conditions.length > 1 && <button type="button" onClick={() => removeCondition(i)} className="pb-1 text-red-400 text-sm">Remove</button>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Reward Tiers */}
-        <div className={sectionCls}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold">Reward Tiers</h2>
-            <button type="button" onClick={addTier} className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">+ Add</button>
-          </div>
-          <div className="space-y-3">
-            {rewardTiers.map((t, i) => (
-              <div key={i} className="rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-medium text-gray-500">Tier #{i + 1}</span>
-                  {rewardTiers.length > 1 && <button type="button" onClick={() => removeTier(i)} className="text-xs text-red-400">Remove</button>}
-                </div>
-                <div className="grid grid-cols-4 gap-3">
-                  <div>
-                    <label className={labelCls}>Stamps Required</label>
-                    <input type="number" value={t.stampRequired} onChange={e => updateTier(i, 'stampRequired', Number(e.target.value))} className={inputCls} min={1} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Reward Type</label>
-                    <select value={t.rewardType} onChange={e => updateTier(i, 'rewardType', Number(e.target.value))} className={selectCls}>
-                      {Object.entries(REWARD_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Reward Value</label>
-                    {t.rewardType === 0 ? (
-                      <button type="button" onClick={() => setShowProductPicker({ target: 'tier', index: i })}
-                        className={`${inputCls} flex items-center gap-2 text-left truncate ${t.rewardValue ? 'text-gray-900' : 'text-gray-400'}`}>
-                        {t.rewardValue ? t.rewardValue.split(',').map(code => productName(code)).join(', ') : 'Select product...'}
-                      </button>
-                    ) : (
-                      <input value={t.rewardValue || ''} onChange={e => updateTier(i, 'rewardValue', e.target.value)} className={inputCls} placeholder="Amount / voucher code" />
-                    )}
-                  </div>
-                  <div>
-                    <label className={labelCls}>Description</label>
-                    <input value={t.rewardDescription} onChange={e => updateTier(i, 'rewardDescription', e.target.value)} className={inputCls} placeholder="e.g. Tặng nón" />
-                  </div>
-                </div>
               </div>
             ))}
           </div>

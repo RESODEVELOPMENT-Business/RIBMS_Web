@@ -48,12 +48,9 @@ export default function StampProgramListPage() {
       },
     },
     {
-      id: 'tiers',
-      header: 'Reward Tiers',
-      cell: ({ row }) => {
-        const tiers: any[] = row.original.rewardTiers || [];
-        return <span className="text-xs">{tiers.map(t => `${t.stampRequired} stamps → ${t.rewardDescription}`).join(', ') || '—'}</span>;
-      },
+      id: 'thresholds',
+      header: 'Mốc đổi quà',
+      cell: () => <span className="text-xs text-gray-600 dark:text-gray-400">Ngưỡng theo hạng</span>,
     },
     {
       accessorKey: 'toDate',

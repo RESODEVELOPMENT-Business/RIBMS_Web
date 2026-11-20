@@ -16,8 +16,9 @@ export interface AdminVoucherItem {
   issuedAt: string;
   startsAt: string;
   expiresAt?: string | null;
-  rewardType: number; // 1 = Percentage, 2 = Amount
+  rewardType: number; // 1 = Percentage, 2 = Amount, 4 = FreeProduct
   rewardTypeName: string;
+  productName?: string | null;
   percentageBasisPoints?: number | null;
   discountPercent?: number | null;
   amount?: number | null;

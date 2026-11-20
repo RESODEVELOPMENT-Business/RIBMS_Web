@@ -99,6 +99,21 @@ export default function CardSettlementSummaryCard({
           </p>
         </div>
       </div>
+
+      {((settlement.topUpUnclassifiedInvoices ?? 0) > 0 ||
+        (settlement.topUpUnclassifiedAmount ?? 0) > 0) && (
+        <div className="mt-4 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between gap-2">
+          <span>
+            Cảnh báo: Có{' '}
+            <strong>{settlement.topUpUnclassifiedInvoices ?? 0}</strong> đơn nạp
+            thẻ thiếu dữ liệu phương thức thanh toán — chưa phân loại vào Tiền
+            mặt hay CK/Khác.
+          </span>
+          <strong className="tabular-nums whitespace-nowrap">
+            {formatVND(settlement.topUpUnclassifiedAmount ?? 0)}
+          </strong>
+        </div>
+      )}
     </div>
   );
 }
